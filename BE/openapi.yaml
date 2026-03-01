@@ -1,0 +1,659 @@
+openapi: 3.0.3
+info:
+  title: UNB Parking Digital Twin API
+  description: Backend API for the UNB Saint John campus parking lot digital twin (MVP).
+  version: 0.1.0
+
+servers:
+  - url: http://localhost:3000
+    description: Local development
+
+paths:
+  /api/health:
+    get:
+      summary: Health check
+      operationId: getHealth
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+
+  /api/parking-lots:
+    get:
+      summary: List all parking lots
+      operationId: listParkingLots
+      responses:
+        "200":
+          description: List of parking lots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ParkingLot"
+    post:
+      summary: Create a parking lot
+      operationId: createParkingLot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateParkingLot"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParkingLot"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/parking-lots/{id}:
+    get:
+      summary: Get a parking lot by ID
+      operationId: getParkingLotById
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Parking lot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParkingLot"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/parking-lots/{id}/spots:
+    get:
+      summary: List spots for a parking lot
+      operationId: listParkingLotSpots
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: List of parking spots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ParkingSpot"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/parking-spots:
+    get:
+      summary: List parking spots
+      operationId: listParkingSpots
+      parameters:
+        - name: parkingLotId
+          in: query
+          description: Filter by parking lot ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: List of parking spots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ParkingSpot"
+    post:
+      summary: Create a parking spot
+      operationId: createParkingSpot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateParkingSpot"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParkingSpot"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/parking-spots/{id}:
+    get:
+      summary: Get a parking spot by ID
+      operationId: getParkingSpotById
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Parking spot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParkingSpot"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/parking-spots/{id}/status:
+    patch:
+      summary: Update parking spot status (occupied / empty)
+      operationId: updateParkingSpotStatus
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateParkingSpotStatus"
+      responses:
+        "200":
+          description: Updated parking spot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParkingSpot"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/historical:
+    get:
+      summary: List historical proxy data
+      operationId: listHistorical
+      responses:
+        "200":
+          description: List of historical proxy records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HistoricalProxyData"
+    post:
+      summary: Add historical proxy data (for model training)
+      operationId: createHistorical
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateHistorical"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoricalProxyData"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/students:
+    get:
+      summary: List all students
+      operationId: listStudents
+      responses:
+        "200":
+          description: List of students
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Student"
+    post:
+      summary: Create a student
+      operationId: createStudent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStudent"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Student"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/students/{id}:
+    get:
+      summary: Get a student by ID
+      operationId: getStudentById
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Student"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/classes:
+    get:
+      summary: List all classes (courses)
+      operationId: listClasses
+      responses:
+        "200":
+          description: List of classes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Course"
+    post:
+      summary: Create a class (course)
+      operationId: createCourse
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCourse"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Course"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/classes/{id}:
+    get:
+      summary: Get a class by ID
+      operationId: getCourseById
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Class (course)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Course"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/class-schedule:
+    get:
+      summary: List class schedule entries (enrollments)
+      operationId: listClassSchedule
+      parameters:
+        - name: studentId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: classId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: List of class schedule entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClassSchedule"
+    post:
+      summary: Enroll a student in a class
+      operationId: createClassSchedule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClassSchedule"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClassSchedule"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/class-schedule/{id}:
+    get:
+      summary: Get a class schedule entry by ID
+      operationId: getClassScheduleById
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "200":
+          description: Class schedule entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClassSchedule"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      summary: Remove enrollment (drop class)
+      operationId: deleteClassSchedule
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "204":
+          description: No content
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  parameters:
+    IdPath:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  schemas:
+    Health:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        service:
+          type: string
+          example: unb-parking-twin-be
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+
+    ParkingLot:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        campus:
+          type: string
+          example: UNB Saint John
+        capacity:
+          type: integer
+          minimum: 0
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateParkingLot:
+      type: object
+      required:
+        - name
+        - capacity
+      properties:
+        name:
+          type: string
+          minLength: 1
+        capacity:
+          type: integer
+          minimum: 0
+        campus:
+          type: string
+
+    ParkingSpot:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        parkingLotId:
+          type: string
+          format: uuid
+        label:
+          type: string
+        row:
+          type: string
+        index:
+          type: integer
+        currentStatus:
+          type: string
+          enum: [occupied, empty]
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateParkingSpot:
+      type: object
+      required:
+        - parkingLotId
+        - label
+      properties:
+        parkingLotId:
+          type: string
+          format: uuid
+        label:
+          type: string
+          minLength: 1
+        row:
+          type: string
+        index:
+          type: integer
+          minimum: 0
+
+    UpdateParkingSpotStatus:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [occupied, empty]
+
+    HistoricalProxyData:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        sourceName:
+          type: string
+        recordedAt:
+          type: string
+          format: date-time
+        occupancyPct:
+          type: number
+          minimum: 0
+          maximum: 100
+        snapshot:
+          type: object
+          nullable: true
+        metadata:
+          type: object
+          nullable: true
+
+    CreateHistorical:
+      type: object
+      required:
+        - sourceName
+        - occupancyPct
+      properties:
+        sourceName:
+          type: string
+          minLength: 1
+        occupancyPct:
+          type: number
+          minimum: 0
+          maximum: 100
+        snapshot:
+          type: object
+          nullable: true
+        metadata:
+          type: object
+          nullable: true
+
+    Student:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        studentId:
+          type: string
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        year:
+          type: integer
+          minimum: 1
+          maximum: 10
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateStudent:
+      type: object
+      required:
+        - studentId
+        - email
+        - name
+      properties:
+        studentId:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+          minLength: 1
+        year:
+          type: integer
+          minimum: 1
+          maximum: 10
+          nullable: true
+
+    Course:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        classCode:
+          type: string
+        startTime:
+          type: string
+        endTime:
+          type: string
+        name:
+          type: string
+          nullable: true
+        term:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateCourse:
+      type: object
+      required:
+        - classCode
+        - startTime
+        - endTime
+      properties:
+        classCode:
+          type: string
+          minLength: 1
+        startTime:
+          type: string
+          minLength: 1
+        endTime:
+          type: string
+          minLength: 1
+        name:
+          type: string
+          nullable: true
+        term:
+          type: string
+          nullable: true
+
+    ClassSchedule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        studentId:
+          type: string
+          format: uuid
+        classId:
+          type: string
+          format: uuid
+        term:
+          type: string
+          nullable: true
+        section:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateClassSchedule:
+      type: object
+      required:
+        - studentId
+        - classId
+      properties:
+        studentId:
+          type: string
+          format: uuid
+        classId:
+          type: string
+          format: uuid
+        term:
+          type: string
+          nullable: true
+        section:
+          type: string
+          nullable: true

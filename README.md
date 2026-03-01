@@ -1,48 +1,39 @@
 # UNB Saint John Parking Digital Twin
 
-MVP: digital twin for campus parking using simulated per-spot data and historical proxy data for model training. Includes student and class data for schedule-aware use.
+Digital twin for campus parking at UNB Saint John. Right now we’re on the MVP: simulated per-spot data (fake sensors), historical proxy data for training, plus students and classes so we can tie usage to schedules later.
 
-## Structure
+**BE** is in `BE/`, **FE** will go in `FE/`. Data model is in `SCHEMA.md`.
 
-- **BE/** – Backend (Express, JSON-file DB, simulated sensor updates)
-  - **migrations/** – DB migrations (for future use)
-  - **src/** – application code
-    - **db/** – JSON store (read/write, getTable, setTable)
-    - **middleware/** – notFound, errorHandler
-    - **modules/** – parkingLots, parkingSpots, historical, students, classes, classSchedule, simulator
-    - **utils/** – shared helpers
-    - **types/** – JSDoc or TypeScript types (optional)
-  - **data/** – `db.json`
-  - **dist/** – build output (when added)
-- **FE/** – Frontend (to be added)
-- **SCHEMA.md** – Relational schema (implemented as `BE/data/db.json`)
+---
 
-## Backend (BE)
-
-- **TypeScript** + **TypeORM** (SQLite); entities use decorators (`@Entity`, `@Column`, `@ManyToOne`, etc.).
-- **Zod** schemas: `createXSchema` and `updateXSchema` (`.partial()` / `.extend()` where needed).
-- **Thin controllers**: validate input, call service, send response.
-- **Fat services**: all DB and business logic (repositories).
-- **Routes**: no logic, only assign HTTP method/path to controller function.
+## Running the backend
 
 ```bash
 cd BE
 npm install
-npm run seed   # seed one parking lot + 24 parking spots (SQLite)
+npm run seed    # one lot, 24 spots (SQLite)
 npm run build
-npm start      # server on http://localhost:3000 + simulator
-# or for dev with reload:
-npm run dev
+npm start
 ```
 
-### API
+Runs on port 3000. For dev with auto-reload use `npm run dev`.
 
-- `GET /api/health` – health check
-- **Parking lots:** `GET/POST /api/parking-lots`, `GET /api/parking-lots/:id`, `GET /api/parking-lots/:id/spots`
-- **Parking spots:** `GET/POST /api/parking-spots`, `GET /api/parking-spots/:id`, `PATCH /api/parking-spots/:id/status` (body: `{ "status": "occupied" | "empty" }`), query `?parkingLotId=...`
-- **Historical:** `GET/POST /api/historical` (body: `sourceName`, `occupancyPct`, optional `snapshot`, `metadata`)
-- **Students:** `GET/POST /api/students`, `GET /api/students/:id` (body: `studentId`, `email`, `name`, optional `year`)
-- **Classes:** `GET/POST /api/classes`, `GET /api/classes/:id` (body: `classCode`, `startTime`, `endTime`, optional `name`, `term`)
-- **Class schedule (enrollments):** `GET/POST /api/class-schedule`, `GET /api/class-schedule/:id`, `DELETE /api/class-schedule/:id`, query `?studentId=...` or `?classId=...` (body: `studentId`, `classId`, optional `term`, `section`)
+A simulator updates ~5% of parking spot statuses every 5 seconds so the lot doesn’t sit static. Override with `SIM_OCCUPANCY` (0–1) if you want a different average occupancy.
 
-Simulator runs every 5s and flips ~5% of parking spot statuses (tunable via `SIM_OCCUPANCY` 0–1).
+---
+
+## What’s in BE
+
+- **TypeScript, TypeORM, SQLite** – entities in `*.entity.ts` with the usual decorators.
+- **Zod** for request validation – each module has a schema file with create/update shapes.
+- **Thin controllers** – they validate, call the service, send the response. Logic lives in **services**.
+- **Routes** – just wire method + path to a controller; no logic in the route files.
+
+Under `BE/src/` you have `db/` (TypeORM data source), `middleware/`, `utils/`, and `modules/`. Each module (parkingLots, parkingSpots, historical, students, classes, classSchedule) has its own entity, schema, service, controller, and route. The simulator is a separate module with no HTTP routes.
+
+---
+
+## API
+
+Full spec is in **`BE/openapi.yaml`**. Open it in [Swagger Editor](https://editor.swagger.io/) or run `npx @redocly/cli preview BE/openapi.yaml` to browse. Keep the spec updated when you add or change endpoints.
+
