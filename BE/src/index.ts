@@ -9,6 +9,8 @@ import historicalRoute from "./modules/historical/historical.route";
 import studentRoute from "./modules/students/student.route";
 import courseRoute from "./modules/classes/course.route";
 import classScheduleRoute from "./modules/classSchedule/classSchedule.route";
+import authRoute from "./modules/users/auth.route";
+import userRoute from "./modules/users/user.route";
 
 const PORT = process.env.PORT || 3000;
 
@@ -23,6 +25,8 @@ async function main() {
   app.use("/api/students", studentRoute);
   app.use("/api/classes", courseRoute);
   app.use("/api/class-schedule", classScheduleRoute);
+  app.use("/api/auth", authRoute);
+  app.use("/api/users", userRoute);
 
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true, service: "unb-parking-twin-be" });

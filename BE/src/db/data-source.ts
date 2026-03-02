@@ -8,6 +8,7 @@ import { HistoricalProxyData } from "../modules/historical/historical.entity";
 import { Student } from "../modules/students/student.entity";
 import { Course } from "../modules/classes/course.entity";
 import { ClassSchedule } from "../modules/classSchedule/classSchedule.entity";
+import { User } from "../modules/users/user.entity";
 
 const dbPath = path.join(__dirname, "..", "..", "data", "database.sqlite");
 
@@ -21,6 +22,7 @@ export const AppDataSource = new DataSource({
     ParkingSpot,
     ParkingSpotReading,
     HistoricalProxyData,
+    User,
     Student,
     Course,
     ClassSchedule,

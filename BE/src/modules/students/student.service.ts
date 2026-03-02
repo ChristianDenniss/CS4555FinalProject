@@ -16,12 +16,14 @@ export async function findByStudentId(studentId: string): Promise<Student | null
 }
 
 export async function create(data: {
+  userId?: string | null;
   studentId: string;
   email: string;
   name: string;
   year?: number | null;
 }): Promise<Student> {
   const student = repo().create({
+    userId: data.userId ?? null,
     studentId: data.studentId,
     email: data.email,
     name: data.name,
@@ -30,9 +32,13 @@ export async function create(data: {
   return repo().save(student);
 }
 
+export async function findByUserId(userId: string): Promise<Student | null> {
+  return repo().findOne({ where: { userId } });
+}
+
 export async function update(
   id: string,
-  data: Partial<{ studentId: string; email: string; name: string; year: number | null }>
+  data: Partial<{ userId: string | null; studentId: string; email: string; name: string; year: number | null }>
 ): Promise<Student | null> {
   const student = await repo().findOne({ where: { id } });
   if (!student) return null;

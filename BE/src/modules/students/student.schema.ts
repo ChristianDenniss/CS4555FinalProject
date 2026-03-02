@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const createStudentSchema = z.object({
+  userId: z.string().uuid().optional().nullable(),
   studentId: z.string().min(1, { message: "studentId is required" }).trim(),
   email: z.string().min(1, { message: "Email is required" }).email("Invalid email").trim(),
   name: z.string().min(1, { message: "Name is required" }).trim(),

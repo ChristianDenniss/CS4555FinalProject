@@ -1,0 +1,115 @@
+import { Request, Response } from "express";
+import * as jwt from "jsonwebtoken";
+import * as userService from "./user.service";
+import * as studentService from "../students/student.service";
+import * as classScheduleService from "../classSchedule/classSchedule.service";
+import { createUserSchema, loginSchema, updateUserSchema } from "./user.schema";
+import { validate } from "../../utils/validate";
+
+const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-in-production";
+const JWT_EXPIRES_IN_SEC = process.env.JWT_EXPIRES_IN
+  ? Number(process.env.JWT_EXPIRES_IN)
+  : 7 * 24 * 60 * 60; // 7 days in seconds
+
+function toPublicUser(user: { id: string; email: string; name: string | null; createdAt: Date }) {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    createdAt: user.createdAt,
+  };
+}
+
+export async function register(req: Request, res: Response) {
+  const result = validate(createUserSchema, req.body);
+  if (!result.valid) return res.status(400).json({ error: result.errors.join("; ") });
+
+  const existing = await userService.findByEmail(result.data!.email);
+  if (existing) return res.status(400).json({ error: "Email already registered" });
+
+  const user = await userService.create({
+    email: result.data!.email,
+    password: result.data!.password,
+    name: result.data!.name ?? null,
+  });
+  const token = jwt.sign({ sub: user.id }, JWT_SECRET, {
+    expiresIn: JWT_EXPIRES_IN_SEC,
+  });
+  res.status(201).json({ user: toPublicUser(user), token });
+}
+
+export async function login(req: Request, res: Response) {
+  const result = validate(loginSchema, req.body);
+  if (!result.valid) return res.status(400).json({ error: result.errors.join("; ") });
+
+  const user = await userService.findByEmail(result.data!.email);
+  if (!user) return res.status(401).json({ error: "Invalid email or password" });
+
+  const ok = await userService.verifyPassword(user, result.data!.password);
+  if (!ok) return res.status(401).json({ error: "Invalid email or password" });
+
+  const token = jwt.sign({ sub: user.id }, JWT_SECRET, {
+    expiresIn: JWT_EXPIRES_IN_SEC,
+  });
+  res.json({ user: toPublicUser(user), token });
+}
+
+export async function me(req: Request, res: Response) {
+  const user = (req as Request & { user?: { id: string; email: string; name: string | null; createdAt: Date } }).user;
+  if (!user) return res.status(401).json({ error: "Not authenticated" });
+  const full = await userService.findById(user.id);
+  if (!full) return res.status(404).json({ error: "User not found" });
+  res.json({
+    ...toPublicUser(full),
+    student: full.student
+      ? {
+          id: full.student.id,
+          studentId: full.student.studentId,
+          email: full.student.email,
+          name: full.student.name,
+          year: full.student.year,
+        }
+      : null,
+  });
+}
+
+export async function mySchedule(req: Request, res: Response) {
+  const user = (req as Request & { user?: { id: string } }).user;
+  if (!user) return res.status(401).json({ error: "Not authenticated" });
+  const student = await studentService.findByUserId(user.id);
+  if (!student) return res.json([]);
+  const schedules = await classScheduleService.findAll({ studentId: student.id });
+  res.json(schedules);
+}
+
+export async function list(req: Request, res: Response) {
+  const users = await userService.findAll();
+  res.json(users.map(toPublicUser));
+}
+
+export async function getById(req: Request, res: Response) {
+  const user = await userService.findById(req.params.id);
+  if (!user) return res.status(404).json({ error: "User not found" });
+  res.json(toPublicUser(user));
+}
+
+export async function update(req: Request, res: Response) {
+  const result = validate(updateUserSchema, req.body);
+  if (!result.valid) return res.status(400).json({ error: result.errors.join("; ") });
+
+  if (result.data!.email !== undefined) {
+    const existing = await userService.findByEmail(result.data!.email);
+    if (existing && existing.id !== req.params.id)
+      return res.status(400).json({ error: "Email already in use" });
+  }
+
+  const user = await userService.update(req.params.id, result.data!);
+  if (!user) return res.status(404).json({ error: "User not found" });
+  res.json(toPublicUser(user));
+}
+
+export async function remove(req: Request, res: Response) {
+  const user = await userService.remove(req.params.id);
+  if (!user) return res.status(404).json({ error: "User not found" });
+  res.status(204).send();
+}

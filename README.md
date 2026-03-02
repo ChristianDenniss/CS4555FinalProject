@@ -2,7 +2,7 @@
 
 Digital twin for campus parking at UNB Saint John. Right now we’re on the MVP: simulated per-spot data (fake sensors), historical proxy data for training, plus students and classes so we can tie usage to schedules later.
 
-**BE** is in `BE/`, **FE** will go in `FE/`. Data model is in `SCHEMA.md`.
+**BE** is in `BE/`, **FE** will go in `FE/`. API and data shapes are in `BE/openapi.yaml`.
 
 ---
 
@@ -29,7 +29,7 @@ A simulator updates ~5% of parking spot statuses every 5 seconds so the lot does
 - **Thin controllers** – they validate, call the service, send the response. Logic lives in **services**.
 - **Routes** – just wire method + path to a controller; no logic in the route files.
 
-Under `BE/src/` you have `db/` (TypeORM data source), `middleware/`, `utils/`, and `modules/`. Each module (parkingLots, parkingSpots, historical, students, classes, classSchedule) has its own entity, schema, service, controller, and route. The simulator is a separate module with no HTTP routes.
+Under `BE/src/` you have `db/` (TypeORM data source), `middleware/`, `utils/`, and `modules/`. Each module (parkingLots, parkingSpots, historical, users, students, classes, classSchedule) has its own entity, schema, service, controller, and route. The simulator is a separate module with no HTTP routes.
 
 ---
 
