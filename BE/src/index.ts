@@ -1,7 +1,8 @@
 import "reflect-metadata";
 import express from "express";
 import { AppDataSource } from "./db/data-source";
-import { notFound, errorHandler } from "./middleware";
+import { notFound, errorHandler, requestLogger } from "./middleware";
+import { cacheHealthCheck } from "./middleware/cache";
 import { startSimulator } from "./modules/simulator";
 import parkingLotRoute from "./modules/parkingLots/parkingLot.route";
 import parkingSpotRoute from "./modules/parkingSpots/parkingSpot.route";
@@ -19,6 +20,7 @@ async function main() {
   await AppDataSource.initialize();
   const app = express();
   app.use(express.json());
+  app.use(requestLogger);
 
   app.use("/api/parking-lots", parkingLotRoute);
   app.use("/api/parking-spots", parkingSpotRoute);
@@ -33,6 +35,7 @@ async function main() {
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true, service: "unb-parking-twin-be" });
   });
+  app.get("/api/cache/health", cacheHealthCheck);
 
   app.use(notFound);
   app.use(errorHandler);
