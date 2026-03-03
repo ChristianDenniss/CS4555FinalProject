@@ -76,7 +76,7 @@ export function ParkingMap({
         maxZoom={MAX_ZOOM}
         maxBounds={MAX_BOUNDS}
         maxBoundsViscosity={1}
-        className="h-full w-full min-h-[400px] rounded-lg border border-slate-200"
+        className="h-full w-full min-h-[400px] rounded-lg border-4 border-unb-red"
         scrollWheelZoom
       >
         <TileLayer

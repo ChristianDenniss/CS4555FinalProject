@@ -168,7 +168,7 @@ export function Home() {
   };
 
   const statsOverlay = (
-    <div className="rounded-lg border border-slate-200 bg-white/95 backdrop-blur p-4 shadow-lg">
+    <div className="rounded-lg border-2 border-unb-red bg-white/95 backdrop-blur p-4 shadow-lg">
       <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
         Live occupancy
       </p>
@@ -200,7 +200,7 @@ export function Home() {
   const leftColumn = sortedByLot.slice(0, half);
   const rightColumn = sortedByLot.slice(half);
   const lotCardClass =
-    "w-full text-left rounded border border-slate-200 bg-white py-2 px-3 flex flex-row flex-wrap items-center justify-between gap-x-3 gap-y-0.5 transition-all duration-200 hover:scale-[1.02] hover:bg-slate-50 hover:border-slate-300 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-unb-red focus-visible:ring-offset-1 cursor-pointer";
+    "w-full text-left rounded border border-slate-200 bg-white py-2 px-3 flex flex-row flex-wrap items-center justify-between gap-x-3 gap-y-0.5 transition-all duration-200 hover:scale-[1.02] hover:bg-unb-red/5 hover:border-unb-red/50 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-unb-red focus-visible:ring-offset-1 cursor-pointer";
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-10 space-y-8">

@@ -13,8 +13,8 @@ function Nav() {
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     isActive
-      ? "text-unb-red font-semibold"
-      : "text-slate-600 hover:text-unb-red";
+      ? "text-white font-semibold"
+      : "text-white/90 hover:text-white";
 
   const handlePrimaryClick = () => {
     if (token) {
@@ -25,9 +25,9 @@ function Nav() {
   };
 
   return (
-    <nav className="flex items-center justify-between py-3 px-6 border-b border-slate-200 bg-white">
+    <nav className="flex items-center justify-between py-3 px-6 border-b border-unb-red-dark bg-unb-red">
       <div className="flex items-center gap-8">
-        <NavLink to="/" className="text-lg font-semibold text-unb-black">
+        <NavLink to="/" className="text-lg font-semibold text-white">
           UNB Parking
         </NavLink>
         <div className="hidden sm:flex items-center gap-6 text-sm">
@@ -45,7 +45,7 @@ function Nav() {
       <button
         type="button"
         onClick={handlePrimaryClick}
-        className="rounded-full bg-unb-red text-white text-sm px-4 py-1.5 hover:bg-unb-red-dark"
+        className="rounded-full bg-white text-unb-red text-sm px-4 py-1.5 font-medium hover:bg-white/90"
       >
         {token ? "Create / edit class schedule" : "Login / Sign up"}
       </button>
