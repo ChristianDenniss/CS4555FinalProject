@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import express from "express";
 import { AppDataSource } from "./db/data-source";
+import { initializeEarthEngine } from "./config/earthEngine";
 import { notFound, errorHandler, requestLogger } from "./middleware";
 import { cacheHealthCheck } from "./middleware/cache";
 import { startSimulator } from "./modules/simulator";
@@ -13,11 +14,14 @@ import courseRoute from "./modules/classes/course.route";
 import classScheduleRoute from "./modules/classSchedule/classSchedule.route";
 import authRoute from "./modules/users/auth.route";
 import userRoute from "./modules/users/user.route";
+import earthEngineRoute from "./modules/earthEngine/earthEngine.route";
 
 const PORT = process.env.PORT || 3000;
 
 async function main() {
   await AppDataSource.initialize();
+  await initializeEarthEngine();
+
   const app = express();
   app.use(express.json());
   app.use(requestLogger);
@@ -31,6 +35,7 @@ async function main() {
   app.use("/api/class-schedule", classScheduleRoute);
   app.use("/api/auth", authRoute);
   app.use("/api/users", userRoute);
+  app.use("/api/earth-engine", earthEngineRoute);
 
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true, service: "unb-parking-twin-be" });

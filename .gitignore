@@ -2,3 +2,4 @@ node_modules/
 BE/node_modules/
 FE/node_modules/
 BE/dist/
+BE/serviceAccount.json

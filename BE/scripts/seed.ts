@@ -3,40 +3,84 @@ import { AppDataSource } from "../src/db/data-source";
 import { ParkingLot } from "../src/modules/parkingLots/parkingLot.entity";
 import { ParkingSpot } from "../src/modules/parkingSpots/parkingSpot.entity";
 
+/** Campus total parking spaces (UNB Saint John). */
+const CAMPUS_TOTAL_SPACES = 1_170;
+
 async function seed() {
   await AppDataSource.initialize();
   const lotRepo = AppDataSource.getRepository(ParkingLot);
   const spotRepo = AppDataSource.getRepository(ParkingSpot);
 
-  const existing = await lotRepo.count();
-  if (existing > 0) {
-    console.log("DB already has data. Skipping seed.");
+  const spotCount = await spotRepo.count();
+  if (spotCount === CAMPUS_TOTAL_SPACES) {
+    console.log(`DB already has full seed (${CAMPUS_TOTAL_SPACES} spots). Skipping.`);
     await AppDataSource.destroy();
     process.exit(0);
   }
-
-  const lot = lotRepo.create({
-    name: "Tilley Hall Lot",
-    campus: "UNB Saint John",
-    capacity: 24,
-  });
-  await lotRepo.save(lot);
-
-  const rows = ["A", "B", "C"];
-  for (let r = 0; r < rows.length; r++) {
-    for (let i = 1; i <= 8; i++) {
-      const spot = spotRepo.create({
-        parkingLotId: lot.id,
-        label: `${rows[r]}-${String(i).padStart(2, "0")}`,
-        row: rows[r],
-        index: i,
-        currentStatus: Math.random() < 0.5 ? "occupied" : "empty",
-      });
-      await spotRepo.save(spot);
-    }
+  if (spotCount > 0 || (await lotRepo.count()) > 0) {
+    console.log(`Clearing existing data (${spotCount} spots) to re-seed to ${CAMPUS_TOTAL_SPACES}...`);
+    await spotRepo.createQueryBuilder().delete().execute();
+    await lotRepo.createQueryBuilder().delete().execute();
   }
 
-  console.log("Seeded 1 parking lot and 24 parking spots.");
+  // 14 lots (names match GEE features); capacities sum to CAMPUS_TOTAL_SPACES
+  const lotsConfig = [
+    { name: "GeneralParking1", capacity: 84 },
+    { name: "GeneralParking2", capacity: 84 },
+    { name: "GeneralParking3", capacity: 84 },
+    { name: "GeneralParking4", capacity: 84 },
+    { name: "StaffParking1", capacity: 84 },
+    { name: "StaffParking2", capacity: 84 },
+    { name: "StaffParking3", capacity: 84 },
+    { name: "TBD", capacity: 84 },
+    { name: "TBD2", capacity: 83 },
+    { name: "TBD3", capacity: 83 },
+    { name: "ResidentParking1", capacity: 83 },
+    { name: "ResidentParking2", capacity: 83 },
+    { name: "TimedParking1", capacity: 83 },
+    { name: "TimedParking2", capacity: 83 },
+  ] as const;
+
+  const lots: ParkingLot[] = [];
+  for (const cfg of lotsConfig) {
+    const lot = lotRepo.create({
+      name: cfg.name,
+      campus: "UNB Saint John",
+      capacity: cfg.capacity,
+    });
+    await lotRepo.save(lot);
+    lots.push(lot);
+  }
+
+  const BATCH = 200;
+  const rows = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
+  let totalSpots = 0;
+  for (const lot of lots) {
+    const capacity = lot.capacity;
+    const perRow = Math.ceil(capacity / rows.length);
+    const spots: ParkingSpot[] = [];
+    for (let n = 0; n < capacity; n++) {
+      const rowIndex = n % perRow;
+      const rowLetter = rows[Math.floor(n / perRow)];
+      const prefix = lot.name.slice(0, 2).toUpperCase().replace(/\s/g, "");
+      spots.push(
+        spotRepo.create({
+          parkingLotId: lot.id,
+          label: `${prefix}-${rowLetter}-${String(rowIndex + 1).padStart(3, "0")}`,
+          section: rowLetter,
+          row: rowLetter,
+          index: rowIndex + 1,
+          currentStatus: Math.random() < 0.5 ? "occupied" : "empty",
+        })
+      );
+    }
+    for (let i = 0; i < spots.length; i += BATCH) {
+      await spotRepo.save(spots.slice(i, i + BATCH));
+    }
+    totalSpots += spots.length;
+  }
+
+  console.log(`Seeded ${lots.length} parking lots and ${totalSpots} parking spots (campus total: ${CAMPUS_TOTAL_SPACES}).`);
   await AppDataSource.destroy();
   process.exit(0);
 }

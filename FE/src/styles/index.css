@@ -4,68 +4,34 @@
 
 @layer base {
   body {
-    @apply bg-volley-bg text-volley-ink font-sans min-h-screen m-0 p-0 box-border;
+    @apply bg-slate-50 text-slate-900 font-sans min-h-screen m-0 p-0;
   }
   #root {
     @apply min-h-screen;
   }
   a {
-    @apply text-volley-accent no-underline;
+    @apply text-sky-600 no-underline;
   }
   a:hover {
     @apply underline;
   }
 }
 
-/* Volley-style skewed header highlight */
 @layer components {
-  .page-header {
-    @apply relative text-4xl font-black uppercase text-center text-volley-ink mx-auto my-8 max-w-fit min-h-[80px] leading-tight animate-fade-in;
-  }
-  .page-header::before {
-    content: "";
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 120%;
-    height: 0.4em;
-    background: #a9d6f5;
-    transform: translate(-50%, -50%) skewX(-25deg);
-    z-index: -1;
-  }
-
-  /* Card: dark with accent border (volley team-card style) */
-  .card-volley {
-    @apply relative flex flex-col w-full bg-volley-ink border-2 border-volley-accent overflow-hidden box-border transition-all duration-200 origin-center;
-    @apply hover:scale-[1.03] hover:shadow-lg;
-  }
-
-  /* Meta boxes (volley single-season-meta) */
-  .meta-box {
-    @apply bg-volley-ink text-white px-4 py-2 border border-volley-border rounded text-center min-w-[8rem] text-base;
-  }
-
-  /* Spot tile: occupied vs empty */
-  .spot-tile {
-    @apply aspect-square rounded border-2 flex items-center justify-center font-semibold cursor-pointer transition-transform duration-150 hover:scale-105;
-  }
-  .spot-tile.occupied {
-    @apply bg-volley-occupied text-white border-volley-occupied;
-  }
-  .spot-tile.empty {
-    @apply bg-volley-empty text-white border-volley-empty;
-  }
-
-  /* Skeleton loader */
   .skeleton {
-    @apply rounded-lg;
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    @apply rounded-lg bg-slate-200;
+    background-image: linear-gradient(
+      90deg,
+      #e5e7eb 25%,
+      #d1d5db 50%,
+      #e5e7eb 75%
+    );
     background-size: 200% 100%;
-    animation: loading 1.5s infinite;
+    animation: skeleton-loading 1.5s infinite;
   }
 }
 
-@keyframes loading {
+@keyframes skeleton-loading {
   0% {
     background-position: 200% 0;
   }

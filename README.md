@@ -20,6 +20,16 @@ Runs on port 3000. For dev with auto-reload use `npm run dev`.
 
 A simulator updates ~5% of parking spot statuses every 5 seconds so the lot doesn’t sit static. Override with `SIM_OCCUPANCY` (0–1) if you want a different average occupancy.
 
+### Google Earth Engine (thumbnails / map tiles)
+
+To use the Earth Engine endpoints, put your **service account key** at `BE/serviceAccount.json` (or set `GOOGLE_APPLICATION_CREDENTIALS` or `EARTH_ENGINE_SERVICE_ACCOUNT_PATH` to its path). The service account **must be registered as a user** in your Google Earth Engine project.
+
+- **Thumbnail:** `GET /api/earth-engine/thumbnail?asset=...` — redirects to a static PNG/JPG.
+- **Tiles (proxied):** `GET /api/earth-engine/tiles/{z}/{x}/{y}?asset=...` — serves map tiles through the backend so the client never sees mapid/token. Use this as the tile URL in your map library, e.g.  
+  `https://your-api/api/earth-engine/tiles/{z}/{x}/{y}?asset=USGS/SRTMGL1_003`  
+  You can protect this route with your auth middleware so only logged-in users get tiles.
+- **Map ID (optional):** `GET /api/earth-engine/mapid?asset=...` — returns mapid/token for client-side tile usage; prefer the tile proxy above to keep credentials server-side.
+
 ---
 
 ## Running the frontend (MVP)

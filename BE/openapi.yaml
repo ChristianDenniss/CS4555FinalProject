@@ -21,6 +21,150 @@ paths:
               schema:
                 $ref: "#/components/schemas/Health"
 
+  /api/earth-engine/thumbnail:
+    get:
+      summary: Earth Engine image thumbnail (redirect to URL)
+      operationId: getEarthEngineThumbnail
+      parameters:
+        - name: asset
+          in: query
+          required: true
+          description: GEE asset ID (e.g. USGS/SRTMGL1_003)
+          schema:
+            type: string
+        - name: dimensions
+          in: query
+          description: Width x height (default 512x512)
+          schema:
+            type: string
+            default: "512x512"
+        - name: format
+          in: query
+          description: png or jpg
+          schema:
+            type: string
+            enum: [png, jpg]
+            default: png
+      responses:
+        "302":
+          description: Redirect to temporary thumbnail URL (PNG/JPG)
+        "400":
+          description: Missing asset
+        "502":
+          description: Earth Engine error
+
+  /api/earth-engine/mapid:
+    get:
+      summary: Earth Engine map ID for tile overlay
+      operationId: getEarthEngineMapId
+      parameters:
+        - name: asset
+          in: query
+          required: true
+          description: GEE asset ID
+          schema:
+            type: string
+        - name: min
+          in: query
+          schema:
+            type: number
+        - name: max
+          in: query
+          schema:
+            type: number
+      responses:
+        "200":
+          description: mapid and token for map tiles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mapid:
+                    type: string
+                  token:
+                    type: string
+        "400":
+          description: Missing asset
+        "502":
+          description: Earth Engine error
+
+  /api/earth-engine/tiles:
+    get:
+      summary: Earth Engine tile URL template for TileLayer
+      description: Returns a URL template for map tiles. Use in TileLayer (e.g. Leaflet). Tiles are proxied through the backend; no token is exposed. Default asset "unbsj" is UNBSJ image + parking sections.
+      operationId: getEarthEngineTileUrl
+      parameters:
+        - name: asset
+          in: query
+          description: Layer/asset (default unbsj)
+          schema:
+            type: string
+            default: unbsj
+      responses:
+        "200":
+          description: Tile URL template
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [tileUrl]
+                properties:
+                  tileUrl:
+                    type: string
+                    example: "/api/earth-engine/tiles/{z}/{x}/{y}?asset=unbsj"
+
+  /api/earth-engine/tiles/{z}/{x}/{y}:
+    get:
+      summary: Earth Engine tile (proxied; mapid/token stay on server)
+      description: Returns a single map tile image. Use as tile URL in map libraries so the client never sees GEE credentials. Optional auth middleware can be applied to this route.
+      operationId: getEarthEngineTile
+      parameters:
+        - name: z
+          in: path
+          required: true
+          description: Zoom level
+          schema:
+            type: integer
+        - name: x
+          in: path
+          required: true
+          description: Tile X
+          schema:
+            type: integer
+        - name: y
+          in: path
+          required: true
+          description: Tile Y
+          schema:
+            type: integer
+        - name: asset
+          in: query
+          required: true
+          description: GEE asset ID (e.g. USGS/SRTMGL1_003)
+          schema:
+            type: string
+        - name: min
+          in: query
+          schema:
+            type: number
+        - name: max
+          in: query
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Tile image (PNG)
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        "400":
+          description: Missing asset or invalid z/x/y
+        "502":
+          description: Earth Engine error
+
   /api/parking-lots:
     get:
       summary: List all parking lots

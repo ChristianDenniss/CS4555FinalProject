@@ -1,0 +1,176 @@
+import { useEffect, useState } from "react";
+import { api } from "../api/client";
+import type { ParkingLot, ParkingSpot } from "../api/types";
+import { ParkingMap } from "../components/ParkingMap";
+
+/** Known total parking spaces on campus (UNB Saint John). */
+const CAMPUS_TOTAL_SPACES = 1_170;
+
+interface Stats {
+  totalSpots: number;
+  occupied: number;
+  empty: number;
+  occupancyPercent: number;
+}
+
+export function Home() {
+  const [lots, setLots] = useState<ParkingLot[]>([]);
+  const [spots, setSpots] = useState<ParkingSpot[]>([]);
+  const [tileUrl, setTileUrl] = useState<string | null>(null);
+  const [tileUrlError, setTileUrlError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    Promise.all([
+      api.get<ParkingLot[]>("/api/parking-lots"),
+      api.get<ParkingSpot[]>("/api/parking-spots"),
+    ])
+      .then(([lotsData, spotsData]) => {
+        setLots(lotsData);
+        setSpots(spotsData);
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    api
+      .get<{ tileUrl: string }>("/api/earth-engine/tiles")
+      .then((data) => setTileUrl(data.tileUrl))
+      .catch((e) => setTileUrlError(e.message));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="max-w-5xl mx-auto px-6 py-10 space-y-6">
+        <div className="skeleton h-8 w-40" />
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+          <div className="skeleton h-24" />
+          <div className="skeleton h-24" />
+          <div className="skeleton h-24" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-5xl mx-auto px-6 py-10 text-red-600">
+        Error loading parking data: {error}
+      </div>
+    );
+  }
+
+  const occupiedCount = spots.filter((s) => s.currentStatus === "occupied").length;
+  const totalSpots = spots.length;
+  const stats: Stats = {
+    totalSpots,
+    occupied: occupiedCount,
+    empty: totalSpots - occupiedCount,
+    // Campus-wide %: use 1,170 as denominator so "whole campus" view is correct
+    occupancyPercent: Math.round((occupiedCount / CAMPUS_TOTAL_SPACES) * 100),
+  };
+
+  const byLot = lots.map((lot) => {
+    const lotSpots = spots.filter((s) => s.parkingLotId === lot.id);
+    const occupied = lotSpots.filter((s) => s.currentStatus === "occupied").length;
+    const total = lotSpots.length;
+    const empty = total - occupied;
+    const occupancyPercent = total ? Math.round((occupied / total) * 100) : 0;
+    return {
+      lot,
+      total,
+      occupied,
+      empty,
+      occupancyPercent,
+    };
+  });
+
+  const statsOverlay = (
+    <div className="rounded-lg border border-slate-200 bg-white/95 backdrop-blur p-4 shadow-lg">
+      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+        Live occupancy
+      </p>
+      <div className="grid grid-cols-4 gap-3 text-center">
+        <div>
+          <p className="text-lg font-bold">{CAMPUS_TOTAL_SPACES.toLocaleString()}</p>
+          <p className="text-xs text-slate-500">Total</p>
+        </div>
+        <div>
+          <p className="text-lg font-bold text-emerald-600">{stats.empty.toLocaleString()}</p>
+          <p className="text-xs text-slate-500">Free</p>
+        </div>
+        <div>
+          <p className="text-lg font-bold text-red-600">{stats.occupied.toLocaleString()}</p>
+          <p className="text-xs text-slate-500">Taken</p>
+        </div>
+        <div>
+          <p className="text-lg font-bold text-sky-600">{stats.occupancyPercent}%</p>
+          <p className="text-xs text-slate-500">Occupancy</p>
+        </div>
+      </div>
+      {tileUrlError && (
+        <p className="text-xs text-amber-600 mt-2">Map layer: {tileUrlError}</p>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="max-w-6xl mx-auto px-6 py-10 space-y-8">
+      <header className="space-y-2">
+        <h1 className="text-3xl font-bold">UNB Parking Digital Twin</h1>
+        <p className="text-slate-600">
+          Live view of parking occupancy on campus (simulated sensors). Campus total:{" "}
+          <strong>{CAMPUS_TOTAL_SPACES.toLocaleString()} parking spaces</strong>.
+        </p>
+      </header>
+
+      <section>
+        <h2 className="text-lg font-semibold mb-3">Campus map (Earth Engine)</h2>
+        <ParkingMap
+          earthEngineTileUrl={tileUrl}
+          className="h-[480px]"
+        >
+          {statsOverlay}
+        </ParkingMap>
+      </section>
+
+      <section>
+        <h2 className="text-lg font-semibold mb-3">By lot</h2>
+        <p className="text-sm text-slate-500 mb-3">
+          Total and occupancy % per lot (subsection of campus).
+        </p>
+        {byLot.length === 0 ? (
+          <p className="text-slate-500 text-sm">
+            No lots found. Did you run <code>npm run seed</code> in the backend?
+          </p>
+        ) : (
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+            {byLot.map(({ lot, total, occupied, empty, occupancyPercent }) => (
+              <div
+                key={lot.id}
+                className="rounded-lg border border-slate-200 bg-white p-4 flex flex-col gap-2"
+              >
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="font-semibold">{lot.name}</p>
+                    <p className="text-xs text-slate-500">{lot.campus}</p>
+                  </div>
+                  <p className="text-sm font-medium text-sky-600">{occupancyPercent}%</p>
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                  <span className="text-slate-700">Total: {total}</span>
+                  <span className="text-emerald-600">Free: {empty}</span>
+                  <span className="text-red-600">Taken: {occupied}</span>
+                  <span className="text-sky-600">{occupancyPercent}%</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
