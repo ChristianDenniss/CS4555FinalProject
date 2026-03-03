@@ -500,6 +500,8 @@ paths:
 
   /api/classes:
     get:
+      tags:
+        - Classes
       summary: List all classes (courses)
       operationId: listClasses
       responses:
@@ -512,6 +514,8 @@ paths:
                 items:
                   $ref: "#/components/schemas/Course"
     post:
+      tags:
+        - Classes
       summary: Create a class (course)
       operationId: createCourse
       requestBody:
@@ -532,6 +536,8 @@ paths:
 
   /api/classes/{id}:
     get:
+      tags:
+        - Classes
       summary: Get a class by ID
       operationId: getCourseById
       parameters:
@@ -548,6 +554,8 @@ paths:
 
   /api/class-schedule:
     get:
+      tags:
+        - Class schedule
       summary: List class schedule entries (enrollments)
       operationId: listClassSchedule
       parameters:
@@ -571,6 +579,8 @@ paths:
                 items:
                   $ref: "#/components/schemas/ClassSchedule"
     post:
+      tags:
+        - Class schedule
       summary: Enroll a student in a class
       operationId: createClassSchedule
       requestBody:
@@ -591,6 +601,8 @@ paths:
 
   /api/class-schedule/{id}:
     get:
+      tags:
+        - Class schedule
       summary: Get a class schedule entry by ID
       operationId: getClassScheduleById
       parameters:
@@ -605,6 +617,8 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
     delete:
+      tags:
+        - Class schedule
       summary: Remove enrollment (drop class)
       operationId: deleteClassSchedule
       parameters:
@@ -617,6 +631,8 @@ paths:
 
   /api/auth/register:
     post:
+      tags:
+        - Auth
       summary: Register a new user
       operationId: register
       requestBody:
@@ -637,6 +653,8 @@ paths:
 
   /api/auth/login:
     post:
+      tags:
+        - Auth
       summary: Log in (returns JWT)
       operationId: login
       requestBody:
@@ -657,6 +675,8 @@ paths:
 
   /api/users:
     get:
+      tags:
+        - Users
       summary: List all users
       operationId: listUsers
       responses:
@@ -671,6 +691,8 @@ paths:
 
   /api/users/me:
     get:
+      tags:
+        - Users
       summary: Get current user and linked student
       operationId: getMe
       security:
@@ -687,6 +709,8 @@ paths:
 
   /api/users/me/schedule:
     get:
+      tags:
+        - Users
       summary: Get class schedule for current user's student
       operationId: getMySchedule
       security:
@@ -705,6 +729,8 @@ paths:
 
   /api/users/{id}:
     get:
+      tags:
+        - Users
       summary: Get a user by ID
       operationId: getUserById
       parameters:
@@ -719,6 +745,8 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
     patch:
+      tags:
+        - Users
       summary: Update a user
       operationId: updateUser
       parameters:
@@ -740,6 +768,8 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
     delete:
+      tags:
+        - Users
       summary: Delete a user
       operationId: deleteUser
       parameters:
