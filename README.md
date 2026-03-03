@@ -2,7 +2,7 @@
 
 Digital twin for campus parking at UNB Saint John. Right now we’re on the MVP: simulated per-spot data (fake sensors), historical proxy data for training, plus students and classes so we can tie usage to schedules later.
 
-**BE** is in `BE/`, **FE** will go in `FE/`. API and data shapes are in `BE/openapi.yaml`.
+**BE** is in `BE/`, **FE** is in `FE/`. API and data shapes are in `BE/openapi.yaml`.
 
 ---
 
@@ -19,6 +19,18 @@ npm start
 Runs on port 3000. For dev with auto-reload use `npm run dev`.
 
 A simulator updates ~5% of parking spot statuses every 5 seconds so the lot doesn’t sit static. Override with `SIM_OCCUPANCY` (0–1) if you want a different average occupancy.
+
+---
+
+## Running the frontend (MVP)
+
+```bash
+cd FE
+npm install
+npm run dev
+```
+
+Runs at http://localhost:5173. Start the backend first so the proxy can reach `http://localhost:3000`.
 
 ---
 

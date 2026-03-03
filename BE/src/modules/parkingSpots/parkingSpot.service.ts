@@ -28,11 +28,16 @@ export async function findById(id: string): Promise<ParkingSpot | null> {
   return spotRepo().findOne({ where: { id } });
 }
 
+/**
+ * Update spot status (taken/freed). Every status change automatically creates
+ * a row in the parking_spot_readings (logs) table—no separate call needed.
+ */
 export async function updateStatus(id: string, status: "occupied" | "empty"): Promise<ParkingSpot | null> {
   const spot = await spotRepo().findOne({ where: { id } });
   if (!spot) return null;
   spot.currentStatus = status;
   await spotRepo().save(spot);
+  // Log is created in the same flow; API and simulator never call log APIs directly
   const log = logRepo().create({
     parkingSpotId: spot.id,
     status,
