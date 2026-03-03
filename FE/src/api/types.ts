@@ -22,6 +22,8 @@ export interface ParkingSpotLog {
   parkingSpotId: string;
   status: "occupied" | "empty";
   recordedAt: string;
+  /** Present when API loads the parkingSpot relation (includes label for display). */
+  parkingSpot?: { id: string; label: string };
 }
 
 export interface AuthResponse {

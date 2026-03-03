@@ -10,10 +10,14 @@ export async function findAll(filters: { parkingSpotId?: string | null } = {}): 
   return repo().find({
     where: Object.keys(where).length ? where : undefined,
     order: { recordedAt: "DESC" },
+    relations: ["parkingSpot"],
   });
 }
 
 export async function findById(id: string): Promise<ParkingSpotLog | null> {
-  return repo().findOne({ where: { id } });
+  return repo().findOne({
+    where: { id },
+    relations: ["parkingSpot"],
+  });
 }
 

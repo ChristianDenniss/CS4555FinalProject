@@ -1,29 +1,47 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
-import type { ParkingSpotLog, ParkingSpot } from "../api/types";
+import type { ParkingSpotLog } from "../api/types";
 
 export function Logs() {
   const [logs, setLogs] = useState<ParkingSpotLog[]>([]);
-  const [spots, setSpots] = useState<ParkingSpot[]>([]);
-  const [spotId, setSpotId] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    api.get<ParkingSpot[]>("/api/parking-spots").then(setSpots).catch(() => {});
-  }, []);
+  const [searchText, setSearchText] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("All logs");
+  const [timeFrom, setTimeFrom] = useState("");
+  const [timeTo, setTimeTo] = useState("");
 
   useEffect(() => {
     setLoading(true);
-    const url = spotId
-      ? `/api/parking-spot-logs?parkingSpotId=${encodeURIComponent(spotId)}`
-      : "/api/parking-spot-logs";
     api
-      .get<ParkingSpotLog[]>(url)
+      .get<ParkingSpotLog[]>("/api/parking-spot-logs")
       .then(setLogs)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [spotId]);
+  }, []);
+
+  const statusOptions = useMemo(() => {
+    const statuses = [...new Set(logs.map((l) => l.status))].sort();
+    return ["All logs", ...statuses];
+  }, [logs]);
+
+  const filteredLogs = useMemo(() => {
+    const search = searchText.trim().toLowerCase();
+    const from = timeFrom ? new Date(timeFrom).getTime() : null;
+    const to = timeTo ? new Date(timeTo).getTime() : null;
+    return logs.filter((log) => {
+      const matchStatus =
+        statusFilter === "All logs" || log.status === statusFilter;
+      const matchSearch =
+        !search ||
+        log.parkingSpot?.label?.toLowerCase().includes(search) ||
+        log.parkingSpotId.toLowerCase().includes(search);
+      const logTime = new Date(log.recordedAt).getTime();
+      const matchTime =
+        (from == null || logTime >= from) && (to == null || logTime <= to);
+      return matchStatus && matchSearch && matchTime;
+    });
+  }, [logs, searchText, statusFilter, timeFrom, timeTo]);
 
   if (loading && logs.length === 0) {
     return (
@@ -36,43 +54,84 @@ export function Logs() {
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
-      <h1 className="page-header">Parking spot logs</h1>
-      <div className="mb-4 max-w-md">
-        <label className="block text-slate-600 text-sm font-medium mb-1">
-          Filter by spot (optional)
-        </label>
-        <select
-          value={spotId}
-          onChange={(e) => setSpotId(e.target.value)}
-          className="w-full px-3 py-2 rounded border border-slate-300 bg-white text-slate-800"
-        >
-          <option value="">All logs</option>
-          {spots.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.label} ({s.currentStatus})
-            </option>
-          ))}
-        </select>
+      <h1 className="page-header">Parking Spot Logs</h1>
+      <div className="mb-4 flex flex-wrap items-end gap-3">
+        <div className="w-48">
+          <label className="block text-slate-600 text-sm font-medium mb-1">
+            Search by spot ID or label
+          </label>
+          <input
+            type="search"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            placeholder="e.g. GE-A-001"
+            className="w-full px-3 py-2 rounded border border-slate-300 bg-white text-slate-800 text-sm"
+          />
+        </div>
+        <div className="w-40">
+          <label className="block text-slate-600 text-sm font-medium mb-1">
+            Filter by type
+          </label>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="w-full px-3 py-2 rounded border border-slate-300 bg-white text-slate-800 text-sm"
+          >
+            {statusOptions.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt === "All logs" ? opt : opt.charAt(0).toUpperCase() + opt.slice(1)}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-end gap-2">
+          <div>
+            <label className="block text-slate-600 text-sm font-medium mb-1">
+              From
+            </label>
+            <input
+              type="datetime-local"
+              value={timeFrom}
+              onChange={(e) => setTimeFrom(e.target.value)}
+              className="px-3 py-2 rounded border border-slate-300 bg-white text-slate-800 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-slate-600 text-sm font-medium mb-1">
+              To
+            </label>
+            <input
+              type="datetime-local"
+              value={timeTo}
+              onChange={(e) => setTimeTo(e.target.value)}
+              className="px-3 py-2 rounded border border-slate-300 bg-white text-slate-800 text-sm"
+            />
+          </div>
+        </div>
       </div>
       {error && <p className="text-red-600 mb-4">{error}</p>}
       <div className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
+          <table className="w-full border-collapse table-fixed">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
-                <th className="text-left py-2 px-3 text-slate-700 font-semibold">Time</th>
-                <th className="text-left py-2 px-3 text-slate-700 font-semibold">Spot ID</th>
-                <th className="text-left py-2 px-3 text-slate-700 font-semibold">Status</th>
+              <tr className="border-b border-unb-red bg-unb-red">
+                <th className="text-left py-2 px-3 text-white font-semibold w-1/4">Time</th>
+                <th className="text-left py-2 px-3 text-white font-semibold w-1/4">Spot</th>
+                <th className="text-left py-2 px-3 text-white font-semibold w-1/4">ID</th>
+                <th className="text-left py-2 px-3 text-white font-semibold w-1/4">Status</th>
               </tr>
             </thead>
             <tbody className="text-slate-800">
-              {logs.slice(0, 25).map((log) => (
+              {filteredLogs.slice(0, 25).map((log) => (
                 <tr key={log.id} className="border-b border-slate-100">
                   <td className="py-2 px-3 text-sm">
                     {new Date(log.recordedAt).toLocaleString()}
                   </td>
-                  <td className="py-2 px-3 font-mono text-sm">
-                    {log.parkingSpotId.slice(0, 8)}…
+                  <td className="py-2 px-3 text-sm">
+                    {log.parkingSpot?.label ?? `${log.parkingSpotId.slice(0, 8)}…`}
+                  </td>
+                  <td className="py-2 px-3 font-mono text-xs text-slate-600" title={log.id}>
+                    {log.id.slice(0, 8)}…
                   </td>
                   <td className="py-2 px-3">
                     <span
@@ -90,13 +149,15 @@ export function Logs() {
             </tbody>
           </table>
         </div>
-        {logs.length === 0 && (
+        {filteredLogs.length === 0 && (
           <p className="p-4 text-slate-600 text-sm">
-            No logs yet. Change spot status on a lot to generate logs.
+            {logs.length === 0
+              ? "No logs yet. Change spot status on a lot to generate logs."
+              : "No logs match the search or filter."}
           </p>
         )}
-        {logs.length > 25 && (
-          <p className="p-2 text-slate-600 text-sm">Showing latest 25.</p>
+        {filteredLogs.length > 25 && (
+          <p className="p-2 text-slate-600 text-sm">Showing latest 25 of {filteredLogs.length}.</p>
         )}
       </div>
     </div>
