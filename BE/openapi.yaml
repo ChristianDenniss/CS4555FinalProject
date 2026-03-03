@@ -8,9 +8,33 @@ servers:
   - url: http://localhost:3000
     description: Local development
 
+tags:
+  - name: Health
+    description: Service and cache health checks.
+  - name: Earth Engine
+    description: Google Earth Engine imagery and map tiles.
+  - name: Parking lots
+    description: Parking lot metadata and capacities.
+  - name: Parking spots
+    description: Individual parking spots and their status.
+  - name: Parking spot logs
+    description: Time-series logs of parking spot status changes.
+  - name: Historical
+    description: Historical parking and sensor proxy data.
+  - name: Students
+    description: Student records for class scheduling demonstrations.
+  - name: Classes
+    description: Class/course catalog.
+  - name: Class schedule
+    description: Class schedule entries (enrollments).
+  - name: Users
+    description: API users and auth-related endpoints.
+
 paths:
   /api/health:
     get:
+      tags:
+        - Health
       summary: Health check
       operationId: getHealth
       responses:
@@ -23,6 +47,8 @@ paths:
 
   /api/earth-engine/thumbnail:
     get:
+      tags:
+        - Earth Engine
       summary: Earth Engine image thumbnail (redirect to URL)
       operationId: getEarthEngineThumbnail
       parameters:
@@ -55,6 +81,8 @@ paths:
 
   /api/earth-engine/mapid:
     get:
+      tags:
+        - Earth Engine
       summary: Earth Engine map ID for tile overlay
       operationId: getEarthEngineMapId
       parameters:
@@ -91,6 +119,8 @@ paths:
 
   /api/earth-engine/tiles:
     get:
+      tags:
+        - Earth Engine
       summary: Earth Engine tile URL template for TileLayer
       description: Returns a URL template for map tiles. Use in TileLayer (e.g. Leaflet). Tiles are proxied through the backend; no token is exposed. Default asset "unbsj" is UNBSJ image + parking sections.
       operationId: getEarthEngineTileUrl
@@ -116,6 +146,8 @@ paths:
 
   /api/earth-engine/tiles/{z}/{x}/{y}:
     get:
+      tags:
+        - Earth Engine
       summary: Earth Engine tile (proxied; mapid/token stay on server)
       description: Returns a single map tile image. Use as tile URL in map libraries so the client never sees GEE credentials. Optional auth middleware can be applied to this route.
       operationId: getEarthEngineTile
@@ -167,6 +199,8 @@ paths:
 
   /api/parking-lots:
     get:
+      tags:
+        - Parking lots
       summary: List all parking lots
       operationId: listParkingLots
       responses:
@@ -179,6 +213,8 @@ paths:
                 items:
                   $ref: "#/components/schemas/ParkingLot"
     post:
+      tags:
+        - Parking lots
       summary: Create a parking lot
       operationId: createParkingLot
       requestBody:
@@ -199,6 +235,8 @@ paths:
 
   /api/parking-lots/{id}:
     get:
+      tags:
+        - Parking lots
       summary: Get a parking lot by ID
       operationId: getParkingLotById
       parameters:
@@ -215,6 +253,8 @@ paths:
 
   /api/parking-lots/{id}/spots:
     get:
+      tags:
+        - Parking lots
       summary: List spots for a parking lot
       operationId: listParkingLotSpots
       parameters:
@@ -238,6 +278,8 @@ paths:
 
   /api/parking-spots:
     get:
+      tags:
+        - Parking spots
       summary: List parking spots
       operationId: listParkingSpots
       parameters:
@@ -262,6 +304,8 @@ paths:
                 items:
                   $ref: "#/components/schemas/ParkingSpot"
     post:
+      tags:
+        - Parking spots
       summary: Create a parking spot
       operationId: createParkingSpot
       requestBody:
@@ -282,6 +326,8 @@ paths:
 
   /api/parking-spots/{id}:
     get:
+      tags:
+        - Parking spots
       summary: Get a parking spot by ID
       operationId: getParkingSpotById
       parameters:
@@ -298,6 +344,8 @@ paths:
 
   /api/parking-spots/{id}/status:
     patch:
+      tags:
+        - Parking spots
       summary: Update parking spot status (occupied / empty)
       operationId: updateParkingSpotStatus
       parameters:
@@ -322,6 +370,8 @@ paths:
 
   /api/parking-spot-logs:
     get:
+      tags:
+        - Parking spot logs
       summary: List parking spot status logs
       operationId: listParkingSpotLogs
       parameters:
@@ -342,6 +392,8 @@ paths:
 
   /api/parking-spot-logs/{id}:
     get:
+      tags:
+        - Parking spot logs
       summary: Get a parking spot log by ID
       operationId: getParkingSpotLogById
       parameters:
@@ -358,6 +410,8 @@ paths:
 
   /api/historical:
     get:
+      tags:
+        - Historical
       summary: List historical proxy data
       operationId: listHistorical
       responses:
@@ -370,6 +424,8 @@ paths:
                 items:
                   $ref: "#/components/schemas/HistoricalProxyData"
     post:
+      tags:
+        - Historical
       summary: Add historical proxy data (for model training)
       operationId: createHistorical
       requestBody:
@@ -390,6 +446,8 @@ paths:
 
   /api/students:
     get:
+      tags:
+        - Students
       summary: List all students
       operationId: listStudents
       responses:
@@ -402,6 +460,8 @@ paths:
                 items:
                   $ref: "#/components/schemas/Student"
     post:
+      tags:
+        - Students
       summary: Create a student
       operationId: createStudent
       requestBody:
@@ -422,6 +482,8 @@ paths:
 
   /api/students/{id}:
     get:
+      tags:
+        - Students
       summary: Get a student by ID
       operationId: getStudentById
       parameters:

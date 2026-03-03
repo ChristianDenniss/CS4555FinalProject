@@ -13,7 +13,8 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-leaflet": "^4.2.1",
-    "react-router-dom": "^6.28.0"
+    "react-router-dom": "^6.28.0",
+    "swagger-ui-react": "^5.32.0"
   },
   "devDependencies": {
     "@types/leaflet": "^1.9.21",
