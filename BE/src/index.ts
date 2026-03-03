@@ -1,4 +1,5 @@
 import "reflect-metadata";
+import path from "path";
 import express from "express";
 import { AppDataSource } from "./db/data-source";
 import { initializeEarthEngine } from "./config/earthEngine";
@@ -42,6 +43,11 @@ async function main() {
     res.json({ ok: true, service: "unb-parking-twin-be" });
   });
   app.get("/api/cache/health", cacheHealthCheck);
+
+  app.get("/api/openapi.yaml", (_req, res) => {
+    res.type("application/x-yaml");
+    res.sendFile(path.join(process.cwd(), "openapi.yaml"));
+  });
 
   app.use(notFound);
   app.use(errorHandler);

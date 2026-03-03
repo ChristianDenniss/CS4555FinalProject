@@ -4,6 +4,7 @@ import { Lots } from "./pages/Lots";
 import { LotDetail } from "./pages/LotDetail";
 import { Auth } from "./pages/Auth";
 import { Logs } from "./pages/Logs";
+import { Api } from "./pages/Api";
 import unbSymbol from "./images/UNBSymbol.png";
 
 const tokenKey = "parking_twin_token";
@@ -43,6 +44,10 @@ function Nav() {
             Logs
             <img src={unbSymbol} alt="" className="h-4 w-4 shrink-0 invisible group-hover:visible group-[.active]:visible transition-[visibility]" aria-hidden />
           </NavLink>
+          <NavLink to="/api" className={linkClass}>
+            API
+            <img src={unbSymbol} alt="" className="h-4 w-4 shrink-0 invisible group-hover:visible group-[.active]:visible transition-[visibility]" aria-hidden />
+          </NavLink>
         </div>
       </div>
       <button
@@ -66,6 +71,7 @@ export default function App() {
         <Route path="/lot/:id" element={<LotDetail />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/logs" element={<Logs />} />
+        <Route path="/api" element={<Api />} />
         {/* Placeholder for future schedule UI */}
         <Route path="/schedule" element={<div className="max-w-4xl mx-auto px-6 py-10 text-sm text-slate-700">Class schedule editor coming soon.</div>} />
       </Routes>
