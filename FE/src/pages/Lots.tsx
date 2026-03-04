@@ -2,6 +2,7 @@ import { useMemo, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import type { ParkingLot } from "../api/types";
+import noImageUrl from "../images/NoImage.jpg";
 
 const PAGE_SIZE = 12;
 type SortOption = "name-asc" | "name-desc" | "capacity-desc" | "capacity-asc";
@@ -94,25 +95,37 @@ export function Lots() {
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {paginatedLots.map((lot) => (
-              <Link
-                key={lot.id}
-                to={`/lot/${lot.id}`}
-                className="group flex flex-col justify-between p-4 rounded-xl border border-slate-200 bg-white text-slate-800 shadow-sm hover:bg-slate-50 hover:border-slate-300 hover:shadow-md transition-all duration-200 aspect-square min-h-[140px]"
-              >
-                <div>
-                  <p className="font-bold text-slate-900 group-hover:text-unb-red transition-colors truncate" title={lot.name}>
-                    {lot.name}
-                  </p>
-                  <p className="text-xs text-slate-500 mt-1 truncate" title={lot.campus}>
-                    {lot.campus}
-                  </p>
-                </div>
-                <p className="text-sm text-slate-600 mt-2">
-                  <span className="font-semibold text-unb-red">{lot.capacity}</span> spaces
-                </p>
-              </Link>
-            ))}
+            {paginatedLots.map((lot) => {
+              const imageSrc = lot.imageUrl?.trim() || noImageUrl;
+              return (
+                <Link
+                  key={lot.id}
+                  to={`/lot/${lot.id}`}
+                  className="group relative block rounded-xl border border-slate-200 bg-slate-100 shadow-sm overflow-hidden hover:border-slate-300 hover:shadow-md transition-all duration-200 aspect-square min-h-[140px]"
+                >
+                  <img
+                    src={imageSrc}
+                    alt=""
+                    className="absolute inset-0 w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.src = noImageUrl;
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
+                    <p className="font-bold truncate group-hover:text-unb-red transition-colors drop-shadow-sm" title={lot.name}>
+                      {lot.name}
+                    </p>
+                    <p className="text-xs text-white/90 mt-0.5 truncate" title={lot.campus}>
+                      {lot.campus}
+                    </p>
+                    <p className="text-sm mt-1">
+                      <span className="font-semibold text-unb-red">{lot.capacity}</span> spaces
+                    </p>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
 
           {totalPages > 1 && (
@@ -121,18 +134,18 @@ export function Lots() {
                 type="button"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="px-3 py-1.5 rounded border border-slate-200 bg-white text-slate-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50"
+                className="px-4 py-2 rounded border-2 border-unb-red bg-white text-unb-red text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-unb-red hover:text-white transition-colors disabled:hover:bg-white disabled:hover:text-unb-red"
               >
                 Previous
               </button>
-              <span className="text-sm text-slate-600 px-2">
-                Page {currentPage} of {totalPages}
+              <span className="text-sm text-slate-700 px-3 py-2 font-medium">
+                Page <span className="text-unb-red font-semibold">{currentPage}</span> of {totalPages}
               </span>
               <button
                 type="button"
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className="px-3 py-1.5 rounded border border-slate-200 bg-white text-slate-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50"
+                className="px-4 py-2 rounded border-2 border-unb-red bg-white text-unb-red text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-unb-red hover:text-white transition-colors disabled:hover:bg-white disabled:hover:text-unb-red"
               >
                 Next
               </button>

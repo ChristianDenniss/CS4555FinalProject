@@ -46,8 +46,51 @@ export function Logs() {
   if (loading && logs.length === 0) {
     return (
       <div className="max-w-4xl mx-auto px-6 py-8">
-        <div className="skeleton h-10 w-48 mb-4" />
-        <div className="skeleton h-96 w-full" />
+        <div className="skeleton h-8 w-56 mb-4 rounded" aria-hidden />
+        <div className="mb-4 flex flex-wrap items-end gap-3">
+          <div className="w-48">
+            <div className="skeleton h-4 w-32 mb-1 rounded" />
+            <div className="skeleton h-9 w-full rounded" />
+          </div>
+          <div className="w-40">
+            <div className="skeleton h-4 w-24 mb-1 rounded" />
+            <div className="skeleton h-9 w-full rounded" />
+          </div>
+          <div className="flex items-end gap-2">
+            <div>
+              <div className="skeleton h-4 w-8 mb-1 rounded" />
+              <div className="skeleton h-9 w-44 rounded" />
+            </div>
+            <div>
+              <div className="skeleton h-4 w-6 mb-1 rounded" />
+              <div className="skeleton h-9 w-44 rounded" />
+            </div>
+          </div>
+        </div>
+        <div className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse table-fixed">
+              <thead>
+                <tr className="border-b border-unb-red bg-unb-red">
+                  <th className="py-2 px-3 w-1/4"><span className="invisible">Time</span></th>
+                  <th className="py-2 px-3 w-1/4"><span className="invisible">Spot</span></th>
+                  <th className="py-2 px-3 w-1/4"><span className="invisible">ID</span></th>
+                  <th className="py-2 px-3 w-1/4"><span className="invisible">Status</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <tr key={i} className="border-b border-slate-100">
+                    <td className="py-2 px-3"><div className="skeleton h-4 w-full max-w-[10rem] rounded" /></td>
+                    <td className="py-2 px-3"><div className="skeleton h-4 w-full max-w-[6rem] rounded" /></td>
+                    <td className="py-2 px-3"><div className="skeleton h-4 w-14 rounded" /></td>
+                    <td className="py-2 px-3"><div className="skeleton h-5 w-16 rounded" /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     );
   }
