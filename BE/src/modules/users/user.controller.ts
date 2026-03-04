@@ -32,6 +32,12 @@ export async function register(req: Request, res: Response) {
     password: result.data!.password,
     name: result.data!.name ?? null,
   });
+  await studentService.create({
+    userId: user.id,
+    studentId: result.data!.studentId,
+    email: user.email,
+    name: result.data!.name?.trim() || user.email,
+  });
   const token = jwt.sign({ sub: user.id }, JWT_SECRET, {
     expiresIn: JWT_EXPIRES_IN_SEC,
   });

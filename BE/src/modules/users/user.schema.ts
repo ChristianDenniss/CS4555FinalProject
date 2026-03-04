@@ -5,6 +5,7 @@ export const createUserSchema = z
     email: z.string().min(1, { message: "Email is required" }).email("Invalid email").trim(),
     password: z.string().min(8, { message: "Password must be at least 8 characters" }),
     name: z.string().trim().optional().nullable(),
+    studentId: z.string().min(1, { message: "Student ID is required" }).trim(),
   })
   .strict();
 

@@ -55,7 +55,7 @@ function Nav() {
         onClick={handlePrimaryClick}
         className="rounded-full bg-white text-unb-red text-sm px-4 py-1.5 font-medium hover:bg-white/90"
       >
-        {token ? "Create / edit class schedule" : "Login / Sign up"}
+        {token ? "My Class Schedule" : "Login / Sign up"}
       </button>
     </nav>
   );
