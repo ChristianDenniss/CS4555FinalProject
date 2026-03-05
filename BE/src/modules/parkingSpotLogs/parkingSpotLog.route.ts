@@ -4,8 +4,8 @@ import { cacheMiddleware } from "../../middleware/cache";
 
 const router = Router();
 
-// Cache logs list (optionally filtered by parkingSpotId)
-router.get("/", cacheMiddleware({ prefix: "parking-spot-logs", ttlSeconds: 30 }), controller.list);
+// Cache logs list briefly so 5s polling sees new simulator logs
+router.get("/", cacheMiddleware({ prefix: "parking-spot-logs", ttlSeconds: 5 }), controller.list);
 // Cache individual log lookups
 router.get(
   "/:id",

@@ -12,12 +12,17 @@ export function Logs() {
   const [timeTo, setTimeTo] = useState("");
 
   useEffect(() => {
+    const fetchLogs = () => {
+      api
+        .get<ParkingSpotLog[]>("/api/parking-spot-logs")
+        .then(setLogs)
+        .catch((e) => setError(e.message))
+        .finally(() => setLoading(false));
+    };
     setLoading(true);
-    api
-      .get<ParkingSpotLog[]>("/api/parking-spot-logs")
-      .then(setLogs)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+    fetchLogs();
+    const interval = setInterval(fetchLogs, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const statusOptions = useMemo(() => {
