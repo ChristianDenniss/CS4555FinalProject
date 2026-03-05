@@ -82,7 +82,7 @@ export function Home() {
     const lotOrder = [
       "GeneralParking1", "GeneralParking2", "GeneralParking3", "GeneralParking4",
       "StaffParking1", "StaffParking2", "StaffParking3",
-      "TBD", "TBD2", "TBD3",
+      "TBD", "PHD Parking", "TBD3",
       "ResidentParking1", "ResidentParking2",
       "TimedParking1", "TimedParking2",
     ];

@@ -58,7 +58,7 @@ async function seed() {
     { name: "StaffParking2", capacity: 84 },
     { name: "StaffParking3", capacity: 84 },
     { name: "TBD", capacity: 84 },
-    { name: "TBD2", capacity: 83 },
+    { name: "PHD Parking", capacity: 83 },
     { name: "TBD3", capacity: 83 },
     { name: "ResidentParking1", capacity: 83 },
     { name: "ResidentParking2", capacity: 83 },

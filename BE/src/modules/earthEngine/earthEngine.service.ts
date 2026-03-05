@@ -41,7 +41,7 @@ const SECTION_LOT_NAMES = [
   "StaffParking2",
   "StaffParking3",
   "TBD",
-  "TBD2",
+  "PHD Parking",
   "TBD3",
   "ResidentParking1",
   "ResidentParking2",
