@@ -79,6 +79,9 @@ export interface Course {
   term: string | null;
   building?: string | null;
   room?: string | null;
+  sectionCode?: string | null;
+  enrolled?: number | null;
+  capacity?: number | null;
   createdAt?: string;
 }
 
@@ -98,6 +101,9 @@ export interface ScheduleEntry {
     term: string | null;
     building: string | null;
     room: string | null;
+    sectionCode: string | null;
+    enrolled: number | null;
+    capacity: number | null;
   } | null;
   studentsEnrolled: number;
 }

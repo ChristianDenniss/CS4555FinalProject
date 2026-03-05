@@ -8,6 +8,9 @@ export const createCourseSchema = z.object({
   term: z.string().trim().optional().nullable(),
   building: z.string().trim().optional().nullable(),
   room: z.string().trim().optional().nullable(),
+  sectionCode: z.string().trim().optional().nullable(),
+  enrolled: z.number().int().min(0).optional().nullable(),
+  capacity: z.number().int().min(0).optional().nullable(),
 }).strict();
 
 export const updateCourseSchema = createCourseSchema.partial();

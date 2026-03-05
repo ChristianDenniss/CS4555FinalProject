@@ -19,6 +19,9 @@ export async function create(data: {
   term?: string | null;
   building?: string | null;
   room?: string | null;
+  sectionCode?: string | null;
+  enrolled?: number | null;
+  capacity?: number | null;
 }): Promise<Course> {
   const cls = repo().create({
     classCode: data.classCode,
@@ -28,13 +31,16 @@ export async function create(data: {
     term: data.term ?? null,
     building: data.building ?? null,
     room: data.room ?? null,
+    sectionCode: data.sectionCode ?? null,
+    enrolled: data.enrolled ?? null,
+    capacity: data.capacity ?? null,
   });
   return repo().save(cls);
 }
 
 export async function update(
   id: string,
-  data: Partial<{ classCode: string; startTime: string; endTime: string; name: string | null; term: string | null; building: string | null; room: string | null }>
+  data: Partial<{ classCode: string; startTime: string; endTime: string; name: string | null; term: string | null; building: string | null; room: string | null; sectionCode: string | null; enrolled: number | null; capacity: number | null }>
 ): Promise<Course | null> {
   const cls = await repo().findOne({ where: { id } });
   if (!cls) return null;

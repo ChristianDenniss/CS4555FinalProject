@@ -4,6 +4,30 @@ import { api } from "../api/client";
 import type { Course, MeResponse, ScheduleEntry } from "../api/types";
 
 const tokenKey = "parking_twin_token";
+const MAX_SCHEDULE_CLASSES = 7;
+
+/** Class code without the section suffix when we show section separately (e.g. "CS4555-SJ01B" + "SJ01B" → "CS4555"). */
+function trimSectionFromClassCode(
+  classCode: string | null | undefined,
+  sectionCode: string | null | undefined
+): string {
+  if (!classCode) return "";
+  if (!sectionCode) return classCode;
+  const suffix = `-${sectionCode}`;
+  if (classCode.endsWith(suffix)) return classCode.slice(0, -suffix.length);
+  return classCode;
+}
+
+/** Format term code as "Winter 2026", "Fall 2028", etc. */
+function formatTerm(term: string | null | undefined): string {
+  if (!term) return "";
+  const match = term.match(/^(\d{4})\/(\w+)$/);
+  if (!match) return term;
+  const [, year, code] = match;
+  const season: Record<string, string> = { FA: "Fall", WI: "Winter", SP: "Spring", SM: "Summer" };
+  const seasonName = season[code.toUpperCase()] ?? code;
+  return `${seasonName} ${year}`;
+}
 
 export function Schedule() {
   const navigate = useNavigate();
@@ -18,6 +42,15 @@ export function Schedule() {
   const [addDropdownOpen, setAddDropdownOpen] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<ScheduleEntry | null>(null);
+  const [termFilter, setTermFilter] = useState<string>("");
+
+  // Load course catalog on mount so the add-class dropdown always has data
+  useEffect(() => {
+    api
+      .get<Course[]>("/api/classes")
+      .then(setCourses)
+      .catch(() => setCourses([]));
+  }, []);
 
   useEffect(() => {
     if (!token) {
@@ -27,34 +60,44 @@ export function Schedule() {
     Promise.all([
       api.get<MeResponse>("/api/users/me", token),
       api.get<ScheduleEntry[]>("/api/users/me/schedule", token),
-      api.get<Course[]>("/api/classes"),
     ])
-      .then(([meData, scheduleData, coursesData]) => {
+      .then(([meData, scheduleData]) => {
         setMe(meData);
         setSchedule(scheduleData);
-        setCourses(coursesData);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [token]);
 
+  const terms = useMemo(() => {
+    const set = new Set(courses.map((c) => c.term).filter(Boolean));
+    return Array.from(set) as string[];
+  }, [courses]);
+
   const filteredCourses = useMemo(() => {
+    let list = courses;
+    if (termFilter) list = list.filter((c) => c.term === termFilter);
     const q = addInput.trim().toLowerCase();
-    if (!q) return courses.slice(0, 20);
-    return courses.filter(
-      (c) =>
-        c.classCode.toLowerCase().includes(q) ||
-        (c.name?.toLowerCase().includes(q) ?? false)
-    ).slice(0, 20);
-  }, [courses, addInput]);
+    if (q) {
+      list = list.filter(
+        (c) =>
+          c.classCode.toLowerCase().includes(q) ||
+          (c.name?.toLowerCase().includes(q) ?? false) ||
+          (c.sectionCode?.toLowerCase().includes(q) ?? false)
+      );
+    }
+    return list.slice(0, 30);
+  }, [courses, addInput, termFilter]);
 
   const alreadyInSchedule = useMemo(
     () => new Set(schedule.map((s) => s.classId)),
     [schedule]
   );
 
+  const scheduleAtLimit = schedule.length >= MAX_SCHEDULE_CLASSES;
+
   const handleAddClass = (course: Course) => {
-    if (!me?.student?.id || alreadyInSchedule.has(course.id)) return;
+    if (!me?.student?.id || alreadyInSchedule.has(course.id) || scheduleAtLimit) return;
     setAddOpen(false);
     setAddInput("");
     setAddDropdownOpen(false);
@@ -128,9 +171,11 @@ export function Schedule() {
     );
   }
 
+  const displayName = me?.name ?? me?.email ?? "My";
+
   return (
     <div className="max-w-3xl mx-auto px-6 py-10">
-      <h1 className="text-2xl font-bold text-slate-900 mb-2">My Class Schedule</h1>
+      <h1 className="text-2xl font-bold text-slate-900 mb-2">{displayName}'s Class Schedule</h1>
       <p className="text-slate-600 text-sm mb-6">
         Add classes by code below. Click the minus to remove a class.
       </p>
@@ -148,11 +193,23 @@ export function Schedule() {
                   <span className="font-semibold text-slate-900">
                     {c?.name ?? "Unnamed class"}
                   </span>
-                  <span className="text-sm text-slate-500">{c?.classCode}</span>
+                  <span className="text-sm text-slate-500">{trimSectionFromClassCode(c?.classCode, c?.sectionCode) || c?.classCode}</span>
+                  {c?.sectionCode && (
+                    <span className="text-xs text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                      {c.sectionCode}
+                    </span>
+                  )}
+                  {c?.term && (
+                    <span className="text-xs text-slate-500">{formatTerm(c.term)}</span>
+                  )}
                 </div>
                 <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-sm text-slate-600">
                   <span>{c?.startTime} – {c?.endTime}</span>
-                  <span>{entry.studentsEnrolled} enrolled</span>
+                  {(c?.enrolled != null && c?.capacity != null) ? (
+                    <span>{c.enrolled} / {c.capacity} enrolled</span>
+                  ) : (
+                    <span>{entry.studentsEnrolled} enrolled</span>
+                  )}
                   {(c?.building ?? c?.room) && (
                     <span>
                       {[c?.building, c?.room].filter(Boolean).join(", ")}
@@ -165,7 +222,7 @@ export function Schedule() {
                 onClick={() => handleRemoveClick(entry)}
                 disabled={removingId === entry.id}
                 className="flex-shrink-0 w-9 h-9 rounded-lg border-2 border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400 flex items-center justify-center font-medium disabled:opacity-50"
-                aria-label={`Remove ${c?.classCode ?? "class"}`}
+                aria-label={`Remove ${(trimSectionFromClassCode(c?.classCode, c?.sectionCode) || c?.classCode) ?? "class"}`}
               >
                 −
               </button>
@@ -178,15 +235,34 @@ export function Schedule() {
         {!addOpen ? (
           <button
             type="button"
-            onClick={() => setAddOpen(true)}
-            className="w-full rounded-xl border-2 border-dashed border-slate-300 py-4 text-slate-600 hover:border-unb-red hover:text-unb-red hover:bg-red-50/30 flex items-center justify-center gap-2 font-medium transition-colors"
+            onClick={() => !scheduleAtLimit && setAddOpen(true)}
+            disabled={scheduleAtLimit}
+            className="w-full rounded-xl border-2 border-dashed border-slate-300 py-4 text-slate-600 hover:border-unb-red hover:text-unb-red hover:bg-red-50/30 flex items-center justify-center gap-2 font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:border-slate-300 disabled:hover:bg-transparent disabled:hover:text-slate-600"
           >
             <span className="text-xl">+</span> Add class
+            {scheduleAtLimit && <span className="text-sm font-normal">(max {MAX_SCHEDULE_CLASSES} classes)</span>}
           </button>
         ) : (
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            {terms.length > 0 && (
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Term
+                </label>
+                <select
+                  value={termFilter}
+                  onChange={(e) => setTermFilter(e.target.value)}
+                  className="w-full max-w-xs px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-unb-red focus:border-unb-red"
+                >
+                  <option value="">All terms</option>
+                  {terms.map((t) => (
+                    <option key={t} value={t}>{formatTerm(t)}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <label className="block text-sm font-medium text-slate-700 mb-2">
-              Class code or name
+              Class code, name, or section
             </label>
             <input
               type="text"
@@ -207,28 +283,50 @@ export function Schedule() {
                 role="listbox"
               >
                 {filteredCourses.length === 0 ? (
-                  <li className="px-3 py-2 text-sm text-slate-500">No matching classes</li>
+                  <li className="px-3 py-2 text-sm text-slate-500">
+                    {courses.length === 0
+                      ? "No courses in catalog. Run the course seed script on the backend."
+                      : "No matching classes. Try a different search or term."}
+                  </li>
                 ) : (
                   filteredCourses.map((course) => {
                     const inSchedule = alreadyInSchedule.has(course.id);
+                    const cannotAdd = inSchedule || scheduleAtLimit;
                     return (
                       <li
                         key={course.id}
                         role="option"
                         onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => !inSchedule && handleAddClass(course)}
-                        className={`px-3 py-2 text-sm cursor-pointer ${
-                          inSchedule
-                            ? "text-slate-400 cursor-not-allowed"
-                            : "text-slate-800 hover:bg-slate-100"
+                        onClick={() => !cannotAdd && handleAddClass(course)}
+                        className={`px-3 py-2 text-sm ${
+                          cannotAdd ? "text-slate-400 cursor-not-allowed" : "text-slate-800 cursor-pointer hover:bg-slate-100"
                         }`}
                       >
-                        <span className="font-medium">{course.classCode}</span>
+                        <div className="flex flex-wrap items-baseline gap-2">
+                          <span className="font-medium">{trimSectionFromClassCode(course.classCode, course.sectionCode) || course.classCode}</span>
+                          {course.sectionCode && (
+                            <span className="text-slate-500">{course.sectionCode}</span>
+                          )}
+                          {course.term && (
+                            <span className="text-slate-400 text-xs">{formatTerm(course.term)}</span>
+                          )}
+                        </div>
                         {course.name && (
-                          <span className="text-slate-500 ml-2">{course.name}</span>
+                          <div className="text-slate-600 mt-0.5">{course.name}</div>
+                        )}
+                        {(course.enrolled != null || course.capacity != null) && (
+                          <div className="text-slate-500 text-xs mt-0.5">
+                            {course.startTime}–{course.endTime}
+                            {course.enrolled != null && course.capacity != null && (
+                              <> · {course.enrolled}/{course.capacity} enrolled</>
+                            )}
+                          </div>
                         )}
                         {inSchedule && (
-                          <span className="ml-2 text-slate-400">(already added)</span>
+                          <span className="ml-0 text-slate-400 text-xs">(already added)</span>
+                        )}
+                        {!inSchedule && scheduleAtLimit && (
+                          <span className="ml-0 text-slate-400 text-xs">(schedule full)</span>
                         )}
                       </li>
                     );
@@ -265,7 +363,7 @@ export function Schedule() {
             <p className="text-slate-600 text-sm mb-4">
               Remove{" "}
               <strong>
-                {confirmRemove.course?.name ?? confirmRemove.course?.classCode ?? "this class"}
+                {confirmRemove.course?.name ?? (trimSectionFromClassCode(confirmRemove.course?.classCode, confirmRemove.course?.sectionCode) || confirmRemove.course?.classCode) ?? "this class"}
               </strong>{" "}
               from your schedule? This cannot be undone.
             </p>

@@ -939,13 +939,13 @@ paths:
         - bearerAuth: []
       responses:
         "200":
-          description: List of class schedule entries (empty if no student linked)
+          description: List of schedule entries with embedded course details (empty if no student linked)
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/ClassSchedule"
+                  $ref: "#/components/schemas/ScheduleEntryWithCourse"
         "401":
           description: Not authenticated
 
@@ -1383,6 +1383,24 @@ components:
         term:
           type: string
           nullable: true
+        building:
+          type: string
+          nullable: true
+        room:
+          type: string
+          nullable: true
+        sectionCode:
+          type: string
+          nullable: true
+          description: Section identifier (e.g. SJ01B)
+        enrolled:
+          type: integer
+          minimum: 0
+          nullable: true
+        capacity:
+          type: integer
+          minimum: 0
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -1409,6 +1427,23 @@ components:
         term:
           type: string
           nullable: true
+        building:
+          type: string
+          nullable: true
+        room:
+          type: string
+          nullable: true
+        sectionCode:
+          type: string
+          nullable: true
+        enrolled:
+          type: integer
+          minimum: 0
+          nullable: true
+        capacity:
+          type: integer
+          minimum: 0
+          nullable: true
 
     ClassSchedule:
       type: object
@@ -1431,6 +1466,35 @@ components:
         createdAt:
           type: string
           format: date-time
+
+    ScheduleEntryWithCourse:
+      description: Class schedule entry with embedded course (used by GET /api/users/me/schedule)
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        studentId:
+          type: string
+          format: uuid
+        classId:
+          type: string
+          format: uuid
+        term:
+          type: string
+          nullable: true
+        section:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        course:
+          nullable: true
+          $ref: "#/components/schemas/Course"
+        studentsEnrolled:
+          type: integer
+          description: Count of students enrolled in this section
 
     CreateClassSchedule:
       type: object

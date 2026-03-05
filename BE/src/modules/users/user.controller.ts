@@ -105,6 +105,9 @@ export async function mySchedule(req: Request, res: Response) {
               term: s.course.term,
               building: s.course.building,
               room: s.course.room,
+              sectionCode: s.course.sectionCode,
+              enrolled: s.course.enrolled,
+              capacity: s.course.capacity,
             }
           : null,
         studentsEnrolled,

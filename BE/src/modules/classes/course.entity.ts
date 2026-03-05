@@ -33,6 +33,15 @@ export class Course {
   @Column({ type: "text", nullable: true })
   room!: string | null;
 
+  @Column({ type: "text", nullable: true })
+  sectionCode!: string | null;
+
+  @Column("integer", { nullable: true })
+  enrolled!: number | null;
+
+  @Column("integer", { nullable: true })
+  capacity!: number | null;
+
   @CreateDateColumn({ type: "datetime" })
   createdAt!: Date;
 

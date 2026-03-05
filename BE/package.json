@@ -9,7 +9,7 @@
     "dev": "ts-node-dev --respawn src/index.ts",
     "seed": "ts-node scripts/seed.ts",
     "seed-replace": "ts-node scripts/seed.ts --replace",
-    "seed-courses": "ts-node scripts/seed-courses.ts",
+    "seed-courses": "ts-node scripts/seed-courses.ts data/scraped-courses.json",
     "scrape-courses": "ts-node scripts/scrape-courses.ts"
   },
   "keywords": [

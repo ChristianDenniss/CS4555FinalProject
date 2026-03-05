@@ -21,6 +21,7 @@
 import "reflect-metadata";
 import { readFileSync } from "fs";
 import { resolve } from "path";
+import { IsNull } from "typeorm";
 import { AppDataSource } from "../src/db/data-source";
 import { Course } from "../src/modules/classes/course.entity";
 import { ClassSchedule } from "../src/modules/classSchedule/classSchedule.entity";
@@ -43,6 +44,9 @@ interface CourseRow {
   term?: string | null;
   building?: string | null;
   room?: string | null;
+  sectionCode?: string | null;
+  enrolled?: number | null;
+  capacity?: number | null;
 }
 
 function parseRows(content: string): CourseRow[] {
@@ -58,6 +62,8 @@ function parseRows(content: string): CourseRow[] {
     if (!classCode || !startTime || !endTime) {
       throw new Error(`Each row must have classCode, startTime, endTime. Got: ${JSON.stringify(row)}`);
     }
+    const enrolled = typeof o.enrolled === "number" && Number.isInteger(o.enrolled) ? o.enrolled : null;
+    const capacity = typeof o.capacity === "number" && Number.isInteger(o.capacity) ? o.capacity : null;
     return {
       classCode,
       startTime,
@@ -66,6 +72,9 @@ function parseRows(content: string): CourseRow[] {
       term: typeof o.term === "string" ? o.term.trim() || null : null,
       building: typeof o.building === "string" ? o.building.trim() || null : null,
       room: typeof o.room === "string" ? o.room.trim() || null : null,
+      sectionCode: typeof o.sectionCode === "string" ? o.sectionCode.trim() || null : null,
+      enrolled,
+      capacity,
     };
   });
 }
@@ -99,7 +108,7 @@ async function main() {
           where: {
             classCode: row.classCode,
             startTime: row.startTime,
-            term: row.term ?? null,
+            term: row.term != null ? row.term : IsNull(),
           },
         });
         if (existing) {
@@ -115,6 +124,9 @@ async function main() {
         term: row.term ?? null,
         building: row.building ?? null,
         room: row.room ?? null,
+        sectionCode: row.sectionCode ?? null,
+        enrolled: row.enrolled ?? null,
+        capacity: row.capacity ?? null,
       });
       await courseRepo.save(course);
       inserted++;
