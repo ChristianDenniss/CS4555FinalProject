@@ -1,8 +1,9 @@
-%% Parking Digital Twin - Data Model (Mermaid ER diagram)
-%% Paste this into Mermaid Live Editor or any Mermaid-supported doc (Notion, Confluence, etc.)
+%% Parking Digital Twin - Data Model (Mermaid ER diagram mockup code)
+%% Paste this into Mermaid Live Editor or any Mermaid supported doc to gen our data model 
 
 erDiagram
-  parking_lots {
+  parking_lots 
+  {
     uuid id PK
     string name
     string campus
@@ -11,7 +12,8 @@ erDiagram
     datetime createdAt
   }
 
-  parking_spots {
+  parking_spots 
+  {
     uuid id PK
     uuid parkingLotId FK
     string label
@@ -22,14 +24,16 @@ erDiagram
     datetime updatedAt
   }
 
-  parking_spot_readings {
+  parking_spot_readings 
+  {
     uuid id PK
     uuid parkingSpotId FK
     string status "occupied|empty"
     datetime recordedAt
   }
 
-  users {
+  users 
+  {
     uuid id PK
     string email "unique"
     string passwordHash
@@ -37,7 +41,8 @@ erDiagram
     datetime createdAt
   }
 
-  students {
+  students 
+  {
     uuid id PK
     uuid userId FK "nullable"
     string studentId
@@ -47,7 +52,8 @@ erDiagram
     datetime createdAt
   }
 
-  classes {
+  classes  
+  {
     uuid id PK
     string classCode
     string startTime
@@ -62,7 +68,8 @@ erDiagram
     datetime createdAt
   }
 
-  class_schedule {
+  class_schedule 
+  {
     uuid id PK
     uuid studentId FK
     uuid classId FK
@@ -71,7 +78,8 @@ erDiagram
     datetime createdAt
   }
 
-  buildings {
+  buildings 
+  {
     uuid id PK
     string name
     string code "nullable"
@@ -79,13 +87,15 @@ erDiagram
     datetime createdAt
   }
 
-  lot_building_distances {
+  lot_building_distances 
+  {
     uuid parkingLotId PK,FK
     uuid buildingId PK,FK
     real distanceMeters
   }
 
-  historical_proxy_data {
+  historical_proxy_data 
+  {
     uuid id PK
     string sourceName
     datetime recordedAt

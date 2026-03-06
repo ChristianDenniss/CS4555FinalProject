@@ -117,6 +117,12 @@ export function Schedule() {
     setConfirmRemove(entry);
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem(tokenKey);
+    setToken(null);
+    navigate("/");
+  };
+
   const handleConfirmRemove = () => {
     if (!confirmRemove || !token) return;
     setRemovingId(confirmRemove.id);
@@ -175,7 +181,16 @@ export function Schedule() {
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-10">
-      <h1 className="text-2xl font-bold text-slate-900 mb-2">{displayName}'s Class Schedule</h1>
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
+        <h1 className="text-2xl font-bold text-slate-900">{displayName}'s Class Schedule</h1>
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="px-4 py-2 rounded-lg border-2 border-unb-red bg-white text-unb-red font-semibold hover:bg-unb-red hover:text-white transition-colors"
+        >
+          Log out
+        </button>
+      </div>
       <p className="text-slate-600 text-sm mb-6">
         Add classes by code below. Click the minus to remove a class.
       </p>
