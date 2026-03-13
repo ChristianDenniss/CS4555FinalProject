@@ -4,6 +4,23 @@ import { api } from "../api/client";
 import type { ParkingLot } from "../api/types";
 import noImageUrl from "../images/NoImage.jpg";
 
+const lotImages: Record<string, string> = (() => {
+  const modules = import.meta.glob("../images/*.{png,jpg,jpeg,webp}", {
+    eager: true,
+    as: "url",
+  }) as Record<string, string>;
+  const map: Record<string, string> = {};
+  for (const [path, url] of Object.entries(modules)) {
+    const parts = path.split("/");
+    const filename = parts[parts.length - 1] ?? "";
+    const baseName = filename.replace(/\.[^.]+$/, "");
+    if (baseName) {
+      map[baseName] = url;
+    }
+  }
+  return map;
+})();
+
 const PAGE_SIZE = 12;
 type SortOption = "name-asc" | "name-desc" | "capacity-desc" | "capacity-asc";
 
@@ -96,7 +113,8 @@ export function Lots() {
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {paginatedLots.map((lot) => {
-              const imageSrc = lot.imageUrl?.trim() || noImageUrl;
+              const mappedImage = lotImages[lot.name];
+              const imageSrc = mappedImage || lot.imageUrl?.trim() || noImageUrl;
               return (
                 <Link
                   key={lot.id}

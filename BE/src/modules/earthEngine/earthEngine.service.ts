@@ -29,20 +29,20 @@ const ee = require("@google/earthengine") as {
 
 /** Asset IDs for the UNBSJ parking composite (image + section polygons). */
 const UNBSJ_IMAGE_ASSET = "projects/cs4555/assets/unbsjIMAGE";
-const UNBSJ_SECTIONS_ASSET = "projects/cs4555/assets/unbsj_parking_sections";
+const UNBSJ_SECTIONS_ASSET = "projects/cs4555/assets/unbsj_parking_sectionsVersion2";
 
 /** Lot names in same order as GEE unbsj_parking_sections features (for tooltip/click when GEE has no name prop). */
 const SECTION_LOT_NAMES = [
   "GeneralParking1",
   "GeneralParking2",
   "GeneralParking3",
-  "GeneralParking4",
+  "GeneralParking5",
   "StaffParking1",
   "StaffParking2",
   "StaffParking3",
-  "TBD",
-  "PHD Parking",
-  "TBD3",
+  "StaffParking4",
+  "PHDParking",
+  "GeneralParking4",
   "ResidentParking1",
   "ResidentParking2",
   "TimedParking1",

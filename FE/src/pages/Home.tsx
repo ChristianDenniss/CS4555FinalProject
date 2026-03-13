@@ -80,9 +80,9 @@ export function Home() {
       return sectionsGeoJSON;
     }
     const lotOrder = [
-      "GeneralParking1", "GeneralParking2", "GeneralParking3", "GeneralParking4",
-      "StaffParking1", "StaffParking2", "StaffParking3",
-      "TBD", "PHD Parking", "TBD3",
+      "GeneralParking1", "GeneralParking2", "GeneralParking3", "GeneralParking5",
+      "StaffParking1", "StaffParking2", "StaffParking3", "StaffParking4",
+      "PHDParking", "GeneralParking4",
       "ResidentParking1", "ResidentParking2",
       "TimedParking1", "TimedParking2",
     ];
