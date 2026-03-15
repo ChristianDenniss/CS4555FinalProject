@@ -40,10 +40,10 @@ async function seed() {
   const lotsConfig = [
     { name: "StaffParking1", capacity: 145 },
     { name: "GeneralParking1", capacity: 119 },
-    { name: "GeneralParking2", capacity: 200 }, // X (estimated)
-    { name: "GeneralParking3", capacity: 200 }, // X (estimated)
+    { name: "GeneralParking2", capacity: 200 }, // X in ParkingLotINFO (estimated)
+    { name: "GeneralParking3", capacity: 200 },
     { name: "TimedParking1", capacity: 17 },
-    { name: "GeneralParking4", capacity: 200 }, // X (estimated)
+    { name: "GeneralParking4", capacity: 342 },
     { name: "TimedParking2", capacity: 27 },
     { name: "StaffParking2", capacity: 6 },
     { name: "ResidentParking1", capacity: 20 },
