@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { api } from "../api/client";
 import type { ParkingLot, ParkingSpot } from "../api/types";
+import { LotHeatMap } from "../components/LotHeatMap";
 
 export function LotDetail() {
   const { id } = useParams<{ id: string }>();
@@ -10,6 +11,7 @@ export function LotDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [section, setSection] = useState("");
+  const [svgMarkup, setSvgMarkup] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -26,6 +28,19 @@ export function LotDetail() {
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [id, section]);
+
+  // Load lot SVG from public/lot-svgs/{lot.id}.svg (when you add an SVG for a lot, it appears here)
+  useEffect(() => {
+    if (!lot?.id) {
+      setSvgMarkup(null);
+      return;
+    }
+    const url = `/lot-svgs/${lot.id}.svg`;
+    fetch(url)
+      .then((r) => (r.ok ? r.text() : Promise.reject(new Error("Not found"))))
+      .then(setSvgMarkup)
+      .catch(() => setSvgMarkup(null));
+  }, [lot?.id]);
 
   const refreshSpots = () => {
     if (!id) return;
@@ -86,10 +101,17 @@ export function LotDetail() {
       </div>
 
       <section className="mb-8">
-        <h2 className="text-lg font-semibold text-slate-800 mb-2">Lot map (closer view)</h2>
-        <div className="rounded-lg border border-slate-200 bg-slate-50 min-h-[320px] flex items-center justify-center text-slate-500 text-sm">
-          Placeholder for manual lot map — add your digital map here.
-        </div>
+        <h2 className="text-lg font-semibold text-slate-800 mb-2">Lot heat map</h2>
+        <p className="text-slate-500 text-sm mb-2">
+          Green = free, red = taken. Click a spot on the map to toggle (or use the list below).
+        </p>
+        <LotHeatMap
+          spots={spots}
+          svgMarkup={svgMarkup}
+          onSpotClick={toggleStatus}
+          showLegend
+          className="min-h-[200px]"
+        />
       </section>
 
       {sections.length > 0 && (
