@@ -4,6 +4,12 @@ import { api } from "../api/client";
 import type { ParkingLot, ParkingSpot } from "../api/types";
 import { LotHeatMap } from "../components/LotHeatMap";
 
+/** SVGs in src/images/svgs/*.svg loaded by filename = {lot.name}.svg (e.g. TimedParking1.svg) */
+const lotSvgLoaders = import.meta.glob<string>("../images/svgs/*.svg", {
+  query: "?raw",
+  import: "default",
+}) as Record<string, () => Promise<string>>;
+
 export function LotDetail() {
   const { id } = useParams<{ id: string }>();
   const [lot, setLot] = useState<ParkingLot | null>(null);
@@ -29,18 +35,20 @@ export function LotDetail() {
       .finally(() => setLoading(false));
   }, [id, section]);
 
-  // Load lot SVG from public/lot-svgs/{lot.id}.svg (when you add an SVG for a lot, it appears here)
+  // Load lot SVG from src/images/svgs/{lot.name}.svg (e.g. TimedParking1.svg)
   useEffect(() => {
-    if (!lot?.id) {
+    if (!lot?.name) {
       setSvgMarkup(null);
       return;
     }
-    const url = `/lot-svgs/${lot.id}.svg`;
-    fetch(url)
-      .then((r) => (r.ok ? r.text() : Promise.reject(new Error("Not found"))))
-      .then(setSvgMarkup)
-      .catch(() => setSvgMarkup(null));
-  }, [lot?.id]);
+    const key = `../images/svgs/${lot.name}.svg`;
+    const load = lotSvgLoaders[key];
+    if (load) {
+      load().then(setSvgMarkup).catch(() => setSvgMarkup(null));
+    } else {
+      setSvgMarkup(null);
+    }
+  }, [lot?.name]);
 
   const refreshSpots = () => {
     if (!id) return;

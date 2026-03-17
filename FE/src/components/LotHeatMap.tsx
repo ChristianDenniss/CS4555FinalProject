@@ -29,7 +29,16 @@ export function LotHeatMap({
   className = "",
 }: LotHeatMapProps) {
   const svgContainerRef = useRef<HTMLDivElement>(null);
-  const spotMap = useMemo(() => new Map(spots.map((s) => [s.label, s])), [spots]);
+  // Match by full label (TI1-A-001) or short label from SVG (A-001)
+  const spotMap = useMemo(() => {
+    const byFull = new Map(spots.map((s) => [s.label, s]));
+    const byShort = new Map<string, ParkingSpot>();
+    spots.forEach((s) => {
+      const parts = s.label.split("-");
+      if (parts.length >= 2) byShort.set(parts.slice(1).join("-"), s);
+    });
+    return (label: string) => byFull.get(label) ?? byShort.get(label);
+  }, [spots]);
 
   useEffect(() => {
     if (!svgMarkup || !svgContainerRef.current) return;
@@ -38,7 +47,7 @@ export function LotHeatMap({
     root.querySelectorAll("[data-spot-label]").forEach((el) => {
       const label = el.getAttribute("data-spot-label");
       if (!label) return;
-      const spot = spotMap.get(label);
+      const spot = spotMap(label);
       const elHtml = el as SVGElement;
       if (spot) {
         elHtml.style.fill = spot.currentStatus === "occupied" ? OCCUPIED_COLOR : EMPTY_COLOR;
@@ -55,7 +64,7 @@ export function LotHeatMap({
       if (!target) return;
       const label = target.getAttribute("data-spot-label");
       if (!label) return;
-      const spot = spotMap.get(label);
+      const spot = spotMap(label);
       if (spot) onSpotClick(spot);
     },
     [onSpotClick, spotMap]
@@ -77,7 +86,7 @@ export function LotHeatMap({
     <div className={className}>
       <div
         ref={svgContainerRef}
-        className="rounded-lg border border-slate-200 bg-white overflow-hidden [&_svg]:max-w-full [&_svg]:h-auto"
+        className="rounded-lg border border-slate-200 bg-white overflow-hidden [&_svg]:w-full [&_svg]:h-auto [&_svg]:block"
         onClick={handleSvgClick}
         role="img"
         aria-label="Lot heat map"
