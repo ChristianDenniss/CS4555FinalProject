@@ -51,9 +51,13 @@ export function ParkingMap({
     (feature: GeoJsonObject, layer: Layer) => {
       const props = (feature as Feature).properties as Record<string, unknown> | undefined;
       const featureName = (props?.name as string) ?? "Section";
-      const lot = lots.find(
-        (l) => l.name === featureName || l.name.replace(/\s+/g, "") === featureName.replace(/\s+/g, "")
-      );
+      // Normalize names so slight differences like "PHDParking" vs "PHDParking1" still match.
+      const normalize = (name: string) => name.replace(/\s+/g, "").toLowerCase();
+      const baseName = normalize(featureName).replace(/\d+$/,"");
+      const lot = lots.find((l) => {
+        const lotNorm = normalize(l.name);
+        return lotNorm === normalize(featureName) || lotNorm.replace(/\d+$/,"") === baseName;
+      });
       const displayName = lot ? lot.name : featureName;
       layer.bindTooltip(displayName, {
         permanent: false,
