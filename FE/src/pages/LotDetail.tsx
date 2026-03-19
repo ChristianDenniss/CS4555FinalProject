@@ -160,9 +160,7 @@ export function LotDetail() {
         </div>
       )}
 
-      <p className="text-slate-500 text-sm mb-4">
-        Click a spot to toggle occupied/empty (simulator also updates every 5s).
-      </p>
+      <p className="text-slate-500 text-sm mb-4">Live data updates every 5 seconds.</p>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(80px,1fr))] gap-2">
         {spotsForList.map((spot) => (
           <button
