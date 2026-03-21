@@ -253,11 +253,17 @@ paths:
     post:
       tags:
         - Parking lots
-      summary: Recommend closest lot with availability and a spot inside it
+      summary: Recommend closest eligible lot with availability and a spot inside it
       description: >
-        Picks the nearest lot to the given building that has at least one available spot (current or predicted),
-        then returns the first suitable empty spot in that lot. Use stateMode "predicted" with optional override maps for future models.
+        Ranks lots by walking distance to the building, drops lots the caller is not allowed to use (staff-only,
+        resident-only, PhD-only are inferred from lot names such as StaffParking1, ResidentParking2, PHDParking1),
+        then picks the nearest remaining lot with at least one empty spot and returns the first suitable spot in that lot.
+        Optional Bearer token: when present, role and resident flag from the user profile drive eligibility; when absent,
+        eligibility defaults to a non-resident student (general/timed lots only). Use stateMode "predicted" with optional override maps for future models.
       operationId: recommendParking
+      security:
+        - {}
+        - bearerAuth: []
       requestBody:
         required: true
         content:

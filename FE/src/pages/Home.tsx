@@ -24,6 +24,11 @@ function spotLabel(spot: ParkingSpot): string {
   return `${spot.section} ${spot.row} #${spot.index}`;
 }
 
+/** Open lot heat map with a specific stall outlined (see LotDetail `?spot=`). */
+function lotHeatMapHref(lotId: string, spotId: string): string {
+  return `/lot/${lotId}?spot=${encodeURIComponent(spotId)}`;
+}
+
 /** Sections GeoJSON from /api/earth-engine/sections */
 interface SectionsGeoJSON {
   type: "FeatureCollection";
@@ -97,25 +102,32 @@ function DayParkingPlanCard(props: {
     if (seg.type === "initial_arrival") {
       const c = seg.targetClass;
       return (
-        <li key={i} className="rounded-lg border border-slate-200 bg-slate-50/80 p-4 space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-unb-red">
-            Initial arrival (class {c.classIndex})
-          </p>
-          <p className="font-medium text-slate-900">
-            Arrive by{" "}
-            <span className="text-unb-red">{formatLocalTime(seg.timing.recommendedArriveBy)}</span>{" "}
-            local time
-          </p>
-          <p className="text-sm text-slate-700">
-            Park in <strong>{seg.parking.lot.name}</strong>, spot{" "}
-            <strong>{spotLabel(seg.parking.spot)}</strong> (~{Math.round(seg.parking.distanceMeters)} m
-            walk to {seg.building.name}
-            {c.room ? `, room ${c.room}` : ""}).
-          </p>
-          <p className="text-sm text-slate-600">
-            {c.classCode}
-            {c.courseName ? ` - ${c.courseName}` : ""} starts at {formatLocalTime(c.startsAt)}.
-          </p>
+        <li key={i}>
+          <Link
+            to={lotHeatMapHref(seg.parking.lot.id, seg.parking.spot.id)}
+            className="block rounded-lg border border-slate-200 bg-slate-50/80 p-4 space-y-2 transition-colors hover:border-unb-red/50 hover:bg-white focus-visible:outline focus-visible:ring-2 focus-visible:ring-unb-red focus-visible:ring-offset-2"
+            aria-label={`Open ${seg.parking.lot.name} map and highlight spot ${spotLabel(seg.parking.spot)}`}
+          >
+            <p className="text-xs font-semibold uppercase tracking-wide text-unb-red">
+              Initial arrival (class {c.classIndex})
+            </p>
+            <p className="font-medium text-slate-900">
+              Arrive by{" "}
+              <span className="text-unb-red">{formatLocalTime(seg.timing.recommendedArriveBy)}</span>{" "}
+              local time
+            </p>
+            <p className="text-sm text-slate-700">
+              Park in <strong>{seg.parking.lot.name}</strong>, spot{" "}
+              <strong>{spotLabel(seg.parking.spot)}</strong> (~{Math.round(seg.parking.distanceMeters)} m
+              walk to {seg.building.name}
+              {c.room ? `, room ${c.room}` : ""}).
+            </p>
+            <p className="text-sm text-slate-600">
+              {c.classCode}
+              {c.courseName ? ` - ${c.courseName}` : ""} starts at {formatLocalTime(c.startsAt)}.
+            </p>
+            <p className="text-xs text-unb-red font-medium pt-1">Open lot map (stall highlighted)</p>
+          </Link>
         </li>
       );
     }
@@ -138,28 +150,35 @@ function DayParkingPlanCard(props: {
     }
     const c = seg.targetClass;
     return (
-      <li key={i} className="rounded-lg border border-amber-200 bg-amber-50/70 p-4 space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-amber-900">
-          Return &amp; park (class {c.classIndex})
-        </p>
-        <p className="text-sm text-slate-700">
-          Long break (~{seg.gapAfterPreviousClassMinutes} min after your previous class). If you leave
-          campus, <strong>return by</strong>{" "}
-          <span className="text-unb-red font-semibold">
-            {formatLocalTime(seg.timing.recommendedArriveBy)}
-          </span>{" "}
-          local time.
-        </p>
-        <p className="text-sm text-slate-700">
-          Park in <strong>{seg.parking.lot.name}</strong>, spot{" "}
-          <strong>{spotLabel(seg.parking.spot)}</strong> (~{Math.round(seg.parking.distanceMeters)} m to{" "}
-          {seg.building.name}
-          {c.room ? `, room ${c.room}` : ""}).
-        </p>
-        <p className="text-sm text-slate-600">
-          {c.classCode}
-          {c.courseName ? ` - ${c.courseName}` : ""} starts at {formatLocalTime(c.startsAt)}.
-        </p>
+      <li key={i}>
+        <Link
+          to={lotHeatMapHref(seg.parking.lot.id, seg.parking.spot.id)}
+          className="block rounded-lg border border-amber-200 bg-amber-50/70 p-4 space-y-2 transition-colors hover:border-amber-400 hover:bg-amber-50 focus-visible:outline focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+          aria-label={`Open ${seg.parking.lot.name} map and highlight spot ${spotLabel(seg.parking.spot)}`}
+        >
+          <p className="text-xs font-semibold uppercase tracking-wide text-amber-900">
+            Return &amp; park (class {c.classIndex})
+          </p>
+          <p className="text-sm text-slate-700">
+            Long break (~{seg.gapAfterPreviousClassMinutes} min after your previous class). If you leave
+            campus, <strong>return by</strong>{" "}
+            <span className="text-unb-red font-semibold">
+              {formatLocalTime(seg.timing.recommendedArriveBy)}
+            </span>{" "}
+            local time.
+          </p>
+          <p className="text-sm text-slate-700">
+            Park in <strong>{seg.parking.lot.name}</strong>, spot{" "}
+            <strong>{spotLabel(seg.parking.spot)}</strong> (~{Math.round(seg.parking.distanceMeters)} m to{" "}
+            {seg.building.name}
+            {c.room ? `, room ${c.room}` : ""}).
+          </p>
+          <p className="text-sm text-slate-600">
+            {c.classCode}
+            {c.courseName ? ` - ${c.courseName}` : ""} starts at {formatLocalTime(c.startsAt)}.
+          </p>
+          <p className="text-xs text-amber-800 font-medium pt-1">Open lot map (stall highlighted)</p>
+        </Link>
       </li>
     );
   };
@@ -175,8 +194,11 @@ function DayParkingPlanCard(props: {
             Your day parking plan
           </h2>
           <p className="text-sm text-slate-500 mt-1 max-w-2xl">
-            Pick a date to load your plan. Arrival time, lot, and suggested spot for each class segment. Long gaps
-            (&gt; 60 min, or the threshold shown below once loaded) assume you left campus and need to park again.
+            Pick a date to load your plan. Only <strong>initial arrival</strong> and{" "}
+            <strong>return &amp; park</strong> steps are clickable (they open the lot heat map with the suggested
+            stall highlighted). <strong>Between classes</strong> / stay-on-campus blocks are informational only. Long
+            gaps (&gt; 60 min, or the threshold shown below once loaded) assume you left campus and need to park
+            again.
           </p>
         </div>
         {token ? (

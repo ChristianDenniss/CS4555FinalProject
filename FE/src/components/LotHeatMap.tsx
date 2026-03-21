@@ -1,10 +1,16 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { ParkingSpot } from "../api/types";
 
+/** Outline color for a stall recommended by the day parking plan (?spot= on lot page). */
+const HIGHLIGHT_STROKE = "#d97706";
+const HIGHLIGHT_STROKE_WIDTH = "5";
+
 export interface LotHeatMapProps {
   spots: ParkingSpot[];
   svgMarkup: string | null;
   onSpotClick?: (spot: ParkingSpot) => void;
+  /** When set, that stall gets a visible outline on the SVG (matched by spot id / layer order). */
+  highlightSpotId?: string | null;
   showLegend?: boolean;
   className?: string;
 }
@@ -40,6 +46,7 @@ export function LotHeatMap({
   spots,
   svgMarkup,
   onSpotClick,
+  highlightSpotId = null,
   showLegend = true,
   className = "",
 }: LotHeatMapProps) {
@@ -83,12 +90,26 @@ export function LotHeatMap({
         } else {
           elHtml.style.fill = isDisabled ? DISABLED_EMPTY_ORIGINAL_FILL : EMPTY_COLOR;
         }
+        const isHighlight = Boolean(highlightSpotId && spot.id === highlightSpotId);
+        if (isHighlight) {
+          elHtml.style.stroke = HIGHLIGHT_STROKE;
+          elHtml.style.strokeWidth = HIGHLIGHT_STROKE_WIDTH;
+          elHtml.setAttribute("paint-order", "stroke fill");
+          elHtml.style.strokeLinejoin = "round";
+          elHtml.style.strokeLinecap = "round";
+        } else {
+          elHtml.style.stroke = "";
+          elHtml.style.strokeWidth = "";
+          elHtml.removeAttribute("paint-order");
+          elHtml.style.strokeLinejoin = "";
+          elHtml.style.strokeLinecap = "";
+        }
         elHtml.style.cursor = onSpotClick ? "pointer" : "default";
         elHtml.setAttribute("data-spot-id", spot.id);
-        elHtml.setAttribute("aria-label", `${spot.label}: ${spot.currentStatus}`);
+        elHtml.setAttribute("aria-label", `${spot.label}: ${spot.currentStatus}${isHighlight ? " (recommended)" : ""}`);
       }
     });
-  }, [svgMarkup, spots, onSpotClick]);
+  }, [svgMarkup, spots, onSpotClick, highlightSpotId]);
 
   const handleSvgClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -149,6 +170,16 @@ export function LotHeatMap({
             />{" "}
             Disabled Taken
           </span>
+          {highlightSpotId ? (
+            <span className="flex items-center gap-1.5">
+              <span
+                className="w-3 h-3 rounded-sm border-2"
+                style={{ borderColor: HIGHLIGHT_STROKE, backgroundColor: "transparent" }}
+                aria-hidden
+              />{" "}
+              Recommended (from plan)
+            </span>
+          ) : null}
         </div>
       )}
     </div>

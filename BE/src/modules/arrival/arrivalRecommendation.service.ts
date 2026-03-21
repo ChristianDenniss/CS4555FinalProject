@@ -6,12 +6,14 @@ import * as studentService from "../students/student.service";
 import * as classScheduleService from "../classSchedule/classSchedule.service";
 import * as buildingService from "../buildings/building.service";
 import * as parkingLotService from "../parkingLots/parkingLot.service";
+import type { UserParkingEligibility } from "../parkingLots/parkingLotEligibility";
 import { hasPlausibleMeetingTimes } from "../classes/courseMeetingTime.util";
+import * as userService from "../users/user.service";
 
 /** Walking speed assumption (meters per minute) ~4.8 km/h */
 export const DEFAULT_WALK_METERS_PER_MINUTE = 80;
 
-/** Minutes added per building floor (ground→1→2 counts as 2 floors for room on floor 2). */
+/** Minutes added per building floor (ground/1/2 counts as 2 floors for room on floor 2). */
 export const DEFAULT_MINUTES_PER_FLOOR = 2;
 
 /** Optional buffer before class start once travel is done (set to 0 to match walk + floors + congestion only). */
@@ -244,7 +246,8 @@ async function buildParkingBlockForCourse(
   walkMpm: number,
   minPerFloor: number,
   prepBuffer: number,
-  stateMode: "current" | "predicted"
+  stateMode: "current" | "predicted",
+  parkingEligibility: UserParkingEligibility
 ): Promise<ArrivalParkingBlock | null> {
   const building = await buildingService.findBuildingForCourseBuilding(course.building);
   if (!building) return null;
@@ -252,6 +255,7 @@ async function buildParkingBlockForCourse(
   const parking = await parkingLotService.recommendBestParking({
     buildingId: building.id,
     stateMode,
+    parkingEligibility,
   });
   if (!parking) return null;
 
@@ -324,6 +328,13 @@ export async function getArrivalRecommendationForUser(
   const student = await studentService.findByUserId(userId);
   if (!student) return null;
 
+  const user = await userService.findById(userId, false);
+  if (!user) return null;
+  const parkingEligibility: UserParkingEligibility = {
+    role: user.role,
+    resident: user.resident,
+  };
+
   const includedTermCodes = getArrivalPlanTermCodes();
   const allowedTermCodesNormalized = new Set(includedTermCodes.map(normalizeTermCode));
 
@@ -341,7 +352,8 @@ export async function getArrivalRecommendationForUser(
     walkMpm,
     minPerFloor,
     prepBuffer,
-    stateMode
+    stateMode,
+    parkingEligibility
   );
   if (!firstBlock) return null;
 
@@ -367,7 +379,8 @@ export async function getArrivalRecommendationForUser(
         walkMpm,
         minPerFloor,
         prepBuffer,
-        stateMode
+        stateMode,
+        parkingEligibility
       );
       if (!block) return null;
       segments.push({
