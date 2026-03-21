@@ -12,14 +12,6 @@ import unbLogoAlternate from "../images/UNBlogoAlternate.png";
 
 const tokenKey = "parking_twin_token";
 
-function localTodayYyyyMmDd(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const mo = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${mo}-${day}`;
-}
-
 function formatLocalTime(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, {
     hour: "numeric",
@@ -75,6 +67,13 @@ function DayParkingPlanCard(props: {
     if (!token) {
       setPlan(null);
       setPlanError(null);
+      setPlanLoading(false);
+      return;
+    }
+    if (!planDate.trim()) {
+      setPlan(null);
+      setPlanError(null);
+      setPlanLoading(false);
       return;
     }
     setPlanLoading(true);
@@ -167,7 +166,7 @@ function DayParkingPlanCard(props: {
 
   return (
     <section
-      className="rounded-2xl border-2 border-slate-200 bg-white shadow-xl p-6 space-y-4"
+      className="rounded-2xl border border-slate-200 bg-white p-6 space-y-4"
       aria-labelledby="day-parking-plan-heading"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -176,8 +175,8 @@ function DayParkingPlanCard(props: {
             Your day parking plan
           </h2>
           <p className="text-sm text-slate-500 mt-1 max-w-2xl">
-            Arrival time, lot, and suggested spot for each class segment. Long gaps (&gt;{" "}
-            {plan?.gapMinutesAssumeLeftCampus ?? 60} min) assume you left campus and need to park again.
+            Pick a date to load your plan. Arrival time, lot, and suggested spot for each class segment. Long gaps
+            (&gt; 60 min, or the threshold shown below once loaded) assume you left campus and need to park again.
           </p>
         </div>
         {token ? (
@@ -194,7 +193,7 @@ function DayParkingPlanCard(props: {
             <button
               type="button"
               onClick={loadPlan}
-              disabled={planLoading}
+              disabled={planLoading || !planDate.trim()}
               className="rounded bg-unb-red text-white text-sm font-medium px-3 py-1.5 hover:opacity-90 disabled:opacity-50"
             >
               {planLoading ? "Loading…" : "Refresh"}
@@ -209,6 +208,10 @@ function DayParkingPlanCard(props: {
             Sign in
           </Link>{" "}
           with a linked student profile and schedule to see personalized recommendations.
+        </p>
+      ) : !planDate.trim() ? (
+        <p className="text-sm text-slate-600 border border-dashed border-slate-200 rounded-lg px-4 py-6 text-center bg-slate-50/80">
+          Select a date above to load your parking plan for that day.
         </p>
       ) : planLoading ? (
         <p className="text-sm text-slate-500">Building your plan…</p>
@@ -245,7 +248,7 @@ export function Home() {
   const [token, setToken] = useState<string | null>(() =>
     typeof window !== "undefined" ? localStorage.getItem(tokenKey) : null
   );
-  const [planDate, setPlanDate] = useState(localTodayYyyyMmDd);
+  const [planDate, setPlanDate] = useState("");
 
   useEffect(() => {
     const syncToken = () => setToken(localStorage.getItem(tokenKey));
