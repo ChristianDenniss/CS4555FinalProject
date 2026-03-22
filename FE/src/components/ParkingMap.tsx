@@ -17,6 +17,8 @@ const MAX_BOUNDS: [[number, number], [number, number]] = [
   [45.31, -66.079],  // northeast
 ];
 
+export type ParkingMapDataMode = "live" | "pick-time";
+
 interface ParkingMapProps {
   /** Tile URL template from /api/earth-engine/tiles (e.g. /api/earth-engine/tiles/{z}/{x}/{y}?asset=unbsj) */
   earthEngineTileUrl: string | null;
@@ -26,6 +28,12 @@ interface ParkingMapProps {
   lots?: ParkingLot[];
   /** Called when a section polygon is clicked; pass lot id to navigate */
   onSectionClick?: (lotId: string) => void;
+  /** Live = current data; pick-time = scenario (time + day on parent). */
+  mapDataMode?: ParkingMapDataMode;
+  /** ISO `YYYY-MM-DD` for the scenario day when `mapDataMode` is `pick-time`. */
+  scenarioDate?: string;
+  /** Local `HH:mm` scenario clock time when `mapDataMode` is `pick-time`. */
+  scenarioTimeHHmm?: string;
   /** Optional overlay (e.g. stats card) rendered on top of the map */
   children?: ReactNode;
   className?: string;
@@ -39,11 +47,37 @@ const sectionsStyle: PathOptions = {
   weight: 0,
 };
 
+function formatScenarioDateLabel(isoDate: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return isoDate;
+  const d = new Date(`${isoDate}T12:00:00`);
+  return d.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatScenarioTimeLabel(hhmm: string): string {
+  const parts = hhmm.split(":");
+  const h = Number(parts[0]);
+  const m = Number(parts[1]);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return hhmm;
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  return d.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export function ParkingMap({
   earthEngineTileUrl,
   sectionsGeoJSON,
   lots = [],
   onSectionClick,
+  mapDataMode = "live",
+  scenarioDate = "",
+  scenarioTimeHHmm = "12:00",
   children,
   className = "",
 }: ParkingMapProps) {
@@ -115,19 +149,37 @@ export function ParkingMap({
           />
         )}
       </MapContainer>
-      <div
-        className="pointer-events-none absolute top-3 right-3 z-[1000] flex items-center gap-1.5 rounded-md bg-unb-red px-2.5 py-1 shadow-lg"
-        role="status"
-        aria-label="Live updating data"
-      >
-        <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-50" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
-        </span>
-        <span className="text-[10px] font-extrabold tracking-[0.2em] text-white drop-shadow-sm">
-          LIVE
-        </span>
-      </div>
+      {mapDataMode === "live" ? (
+        <div
+          className="pointer-events-none absolute top-3 right-3 z-[1000] flex items-center gap-1.5 rounded-md bg-unb-red px-2.5 py-1 shadow-lg"
+          role="status"
+          aria-label="Live updating data"
+        >
+          <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-50" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+          </span>
+          <span className="text-[10px] font-extrabold tracking-[0.2em] text-white drop-shadow-sm">
+            LIVE
+          </span>
+        </div>
+      ) : (
+        <div
+          className="pointer-events-none absolute top-3 right-3 z-[1000] max-w-[min(100%,9.5rem)] rounded-md bg-unb-red px-2 py-1 text-center shadow-lg"
+          role="status"
+          aria-label={`Scenario ${formatScenarioTimeLabel(scenarioTimeHHmm)} on ${formatScenarioDateLabel(scenarioDate)}`}
+        >
+          <p className="text-[8px] font-semibold uppercase tracking-wider text-white/90">
+            Plan time
+          </p>
+          <p className="text-sm font-extrabold tabular-nums leading-tight text-white drop-shadow-sm">
+            {formatScenarioTimeLabel(scenarioTimeHHmm)}
+          </p>
+          <p className="text-[9px] font-medium leading-tight text-white/85">
+            {formatScenarioDateLabel(scenarioDate)}
+          </p>
+        </div>
+      )}
       {children && (
         <div className="absolute bottom-4 left-4 right-4 md:left-4 md:right-auto md:max-w-sm z-[1000]">
           {children}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type {
@@ -7,7 +7,7 @@ import type {
   ParkingLot,
   ParkingSpot,
 } from "../api/types";
-import { ParkingMap } from "../components/ParkingMap";
+import { ParkingMap, type ParkingMapDataMode } from "../components/ParkingMap";
 import unbLogoAlternate from "../images/UNBlogoAlternate.png";
 
 const tokenKey = "parking_twin_token";
@@ -16,6 +16,27 @@ function formatLocalTime(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, {
     hour: "numeric",
     minute: "2-digit",
+  });
+}
+
+/** Local calendar date as YYYY-MM-DD (avoid UTC shift from toISOString). */
+function localISODate(d = new Date()): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function localTimeHHmm(d = new Date()): string {
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+/** Whole control should open native picker; icon uses pointer-events: none so value area is clickable. */
+function tryOpenScenarioPicker(e: MouseEvent<HTMLInputElement>) {
+  const el = e.currentTarget as HTMLInputElement & { showPicker?: () => void | Promise<void> };
+  if (typeof el.showPicker !== "function") return;
+  void Promise.resolve(el.showPicker()).catch(() => {
+    /* NotAllowedError / unsupported — fall back to default focus behavior */
   });
 }
 
@@ -269,6 +290,9 @@ export function Home() {
     typeof window !== "undefined" ? localStorage.getItem(tokenKey) : null
   );
   const [planDate, setPlanDate] = useState("");
+  const [mapDataMode, setMapDataMode] = useState<ParkingMapDataMode>("live");
+  const [mapScenarioDate, setMapScenarioDate] = useState(() => localISODate());
+  const [mapScenarioTimeHHmm, setMapScenarioTimeHHmm] = useState(() => localTimeHHmm());
 
   useEffect(() => {
     const syncToken = () => setToken(localStorage.getItem(tokenKey));
@@ -468,12 +492,67 @@ export function Home() {
       </header>
 
       <section>
-        <h2 className="text-lg font-semibold mb-3">Campus map (Google Earth Engine API)</h2>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          <h2 className="text-lg font-semibold">Campus map (Google Earth Engine API)</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <div
+              className="inline-flex h-8 box-border items-stretch overflow-hidden rounded-md border-2 border-unb-red bg-white shadow-sm"
+              role="group"
+              aria-label="Map data context"
+            >
+              <button
+                type="button"
+                onClick={() => setMapDataMode("live")}
+                className={`flex items-center justify-center px-3 text-xs font-semibold leading-none transition-colors ${
+                  mapDataMode === "live"
+                    ? "bg-unb-red text-white"
+                    : "text-slate-900 hover:bg-unb-red/5"
+                }`}
+              >
+                Live
+              </button>
+              <button
+                type="button"
+                onClick={() => setMapDataMode("pick-time")}
+                className={`flex items-center justify-center border-l-2 border-unb-red px-3 text-xs font-semibold leading-none transition-colors ${
+                  mapDataMode === "pick-time"
+                    ? "bg-unb-red text-white"
+                    : "text-slate-900 hover:bg-unb-red/5"
+                }`}
+              >
+                Pick time
+              </button>
+            </div>
+            {mapDataMode === "pick-time" && (
+              <>
+                <input
+                  type="time"
+                  value={mapScenarioTimeHHmm}
+                  onChange={(e) => setMapScenarioTimeHHmm(e.target.value)}
+                  onClick={tryOpenScenarioPicker}
+                  aria-label="Scenario time"
+                  className="map-scenario-datetime box-border h-8 cursor-pointer rounded-md border-2 border-unb-red bg-white text-sm font-medium leading-none text-slate-900 focus:border-unb-red focus:outline-none focus:ring-2 focus:ring-unb-red/25"
+                />
+                <input
+                  type="date"
+                  value={mapScenarioDate}
+                  onChange={(e) => setMapScenarioDate(e.target.value)}
+                  onClick={tryOpenScenarioPicker}
+                  aria-label="Scenario date"
+                  className="map-scenario-datetime box-border h-8 cursor-pointer rounded-md border-2 border-unb-red bg-white text-sm font-medium leading-none text-slate-900 focus:border-unb-red focus:outline-none focus:ring-2 focus:ring-unb-red/25"
+                />
+              </>
+            )}
+          </div>
+        </div>
         <ParkingMap
           earthEngineTileUrl={tileUrl}
           sectionsGeoJSON={sectionsWithLotNames}
           lots={lots}
           onSectionClick={(lotId) => navigate(`/lot/${lotId}`)}
+          mapDataMode={mapDataMode}
+          scenarioDate={mapScenarioDate}
+          scenarioTimeHHmm={mapScenarioTimeHHmm}
           className="h-[480px]"
         >
           {statsOverlay}

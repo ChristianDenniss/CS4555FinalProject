@@ -15,6 +15,119 @@
 }
 
 @layer components {
+  /**
+   * Tighter native date/time controls (Home map “Pick time” row).
+   * WebKit adds extra inline space around the calendar/clock icon.
+   */
+  .map-scenario-datetime {
+    padding-left: 0.35rem;
+    padding-right: 0.25rem;
+    cursor: pointer;
+    /* Match body text; picker glyphs stay UNB red via ::-webkit-calendar-picker-indicator filter */
+    color: #0f172a;
+    accent-color: #9e1e32;
+  }
+  /* Let clicks hit the input / value (negative margin pulls glyph over text otherwise). */
+  .map-scenario-datetime::-webkit-calendar-picker-indicator {
+    margin: 0;
+    padding: 0 0 0 0.1rem;
+    pointer-events: none;
+    cursor: inherit;
+    opacity: 1;
+    /* Tint default grey glyph toward UNB red (#9E1E32) */
+    filter: invert(18%) sepia(90%) saturate(2500%) hue-rotate(310deg) brightness(0.85);
+  }
+  .map-scenario-datetime::-webkit-datetime-edit-fields-wrapper {
+    padding: 0;
+  }
+  .map-scenario-datetime::-webkit-datetime-edit {
+    padding: 0;
+  }
+
+  /**
+   * Date only (Chromium/WebKit): the fields wrapper flex-grows by default and
+   * pushes the calendar icon away from the digits — fix that, not padding-right.
+   */
+  input[type="date"].map-scenario-datetime {
+    padding-right: 0.35rem;
+  }
+  input[type="date"].map-scenario-datetime::-webkit-datetime-edit {
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+  }
+  input[type="date"].map-scenario-datetime::-webkit-datetime-edit-fields-wrapper {
+    display: inline-flex;
+    flex-grow: 0;
+    flex-shrink: 0;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+  }
+  input[type="date"].map-scenario-datetime::-webkit-datetime-edit-text {
+    padding: 0;
+    color: #0f172a;
+  }
+  input[type="date"].map-scenario-datetime::-webkit-datetime-edit-year-field,
+  input[type="date"].map-scenario-datetime::-webkit-datetime-edit-month-field,
+  input[type="date"].map-scenario-datetime::-webkit-datetime-edit-day-field {
+    padding: 0;
+    margin: 0;
+  }
+  input[type="date"].map-scenario-datetime::-webkit-calendar-picker-indicator {
+    margin: 0;
+    margin-left: -1.8rem;
+    padding: 0;
+    flex-shrink: 0;
+    pointer-events: none;
+    cursor: inherit;
+    opacity: 1;
+    filter: invert(18%) sepia(90%) saturate(2500%) hue-rotate(310deg) brightness(0.85);
+  }
+
+  /** Time: same flex + tight clock icon as date (Chromium/WebKit). */
+  input[type="time"].map-scenario-datetime {
+    padding-right: 0.35rem;
+  }
+  input[type="time"].map-scenario-datetime::-webkit-datetime-edit {
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+  }
+  input[type="time"].map-scenario-datetime::-webkit-datetime-edit-fields-wrapper {
+    display: inline-flex;
+    flex-grow: 0;
+    flex-shrink: 0;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+  }
+  input[type="time"].map-scenario-datetime::-webkit-datetime-edit-text {
+    padding: 0;
+  }
+  input[type="time"].map-scenario-datetime::-webkit-datetime-edit-hour-field,
+  input[type="time"].map-scenario-datetime::-webkit-datetime-edit-minute-field,
+  input[type="time"].map-scenario-datetime::-webkit-datetime-edit-second-field,
+  input[type="time"].map-scenario-datetime::-webkit-datetime-edit-ampm-field {
+    padding: 0;
+    margin: 0;
+    color: #0f172a;
+  }
+  input[type="time"].map-scenario-datetime::-webkit-calendar-picker-indicator {
+    margin: 0;
+    margin-left: -0.2rem;
+    padding: 0;
+    flex-shrink: 0;
+    pointer-events: none;
+    cursor: inherit;
+    opacity: 1;
+    filter: invert(18%) sepia(90%) saturate(2500%) hue-rotate(310deg) brightness(0.85);
+  }
+
   .skeleton {
     @apply rounded-lg bg-slate-200;
     background-image: linear-gradient(
