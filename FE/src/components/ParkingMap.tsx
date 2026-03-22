@@ -115,6 +115,19 @@ export function ParkingMap({
           />
         )}
       </MapContainer>
+      <div
+        className="pointer-events-none absolute top-3 right-3 z-[1000] flex items-center gap-1.5 rounded-md bg-unb-red px-2.5 py-1 shadow-lg"
+        role="status"
+        aria-label="Live updating data"
+      >
+        <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-50" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+        </span>
+        <span className="text-[10px] font-extrabold tracking-[0.2em] text-white drop-shadow-sm">
+          LIVE
+        </span>
+      </div>
       {children && (
         <div className="absolute bottom-4 left-4 right-4 md:left-4 md:right-auto md:max-w-sm z-[1000]">
           {children}
