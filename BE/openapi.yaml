@@ -976,8 +976,9 @@ paths:
       summary: Update current user profile (no password)
       description: >
         Update name, email, role, resident flag, accessible/disabled parking flag, and optionally link a student profile.
-        Switching role to staff unlinks any linked student record. Switching to student or PhD candidate without a linked
-        student requires `studentId` in the body. At least one field must be provided.
+        Changing role does not remove a linked student profile or class schedule; staff and PhD may keep the same
+        enrollment record. Switching to student or PhD candidate without a linked student requires `studentId` in the
+        body. At least one field must be provided.
       operationId: patchMe
       security:
         - bearerAuth: []
@@ -1053,14 +1054,14 @@ paths:
         - Users
       summary: Get class schedule for current user's student
       description: >
-        Omits entries whose course has placeholder meeting times (e.g. 00:00-00:00, 00:00-23:59, or a single block
-        longer than 14 hours) so thesis/independent-study placeholders do not appear in the app UI.
+        Returns all enrolled sections (including courses with placeholder times such as thesis blocks). Day parking
+        recommendations ignore implausible meeting times; the schedule list does not.
       operationId: getMySchedule
       security:
         - bearerAuth: []
       responses:
         "200":
-          description: List of schedule entries with embedded course details (empty if no student linked); junk time rows filtered out
+          description: List of schedule entries with embedded course details (empty if no student linked)
           content:
             application/json:
               schema:
@@ -1297,8 +1298,7 @@ components:
         studentId:
           type: string
           description: >
-            Required when your role is student or PhD candidate and no student profile is linked yet
-            (e.g. after switching from staff).
+            Required when your role is student or PhD candidate and no student profile is linked yet.
 
     ArrivalClassSummary:
       type: object

@@ -173,11 +173,30 @@ export function Schedule() {
     e.preventDefault();
     if (!token || !me) return;
     setProfileMessage(null);
+
+    const name = profileName.trim();
+    const email = profileEmail.trim();
+    if (!name) {
+      setProfileMessage("Name is required.");
+      return;
+    }
+    if (!email) {
+      setProfileMessage("Email is required.");
+      return;
+    }
+
+    if (needsStudentIdForSave && !profileStudentId.trim()) {
+      setProfileMessage(
+        "Student ID is required when your role is Student or PhD candidate and no student profile is linked yet."
+      );
+      return;
+    }
+
     setProfileSaving(true);
     try {
       const body: Record<string, unknown> = {
-        name: profileName.trim(),
-        email: profileEmail.trim(),
+        name,
+        email,
         role: profileRole,
         resident: profileResident,
         disabled: profileDisabled,
@@ -189,6 +208,11 @@ export function Schedule() {
       setMe(updated);
       setProfileMessage("Profile saved.");
     } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        setAuthNotice("Your session expired. Sign in again.");
+        clearSession();
+        return;
+      }
       setProfileMessage(err instanceof Error ? err.message : "Could not save profile");
     } finally {
       setProfileSaving(false);
@@ -349,7 +373,7 @@ export function Schedule() {
           <p className="text-slate-600 text-sm mb-6">
             These details are used to recommend parking you&apos;re eligible for. Password cannot be changed here yet.
           </p>
-          <form onSubmit={handleProfileSave} className="space-y-4 max-w-lg">
+          <form onSubmit={handleProfileSave} noValidate className="space-y-4 max-w-lg">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
               <input
@@ -392,7 +416,7 @@ export function Schedule() {
                   value={profileStudentId}
                   onChange={(e) => setProfileStudentId(e.target.value)}
                   placeholder="Required to link your student profile"
-                  required
+                  autoComplete="off"
                   className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-unb-red focus:border-unb-red"
                 />
                 <p className="text-xs text-slate-500 mt-1">
@@ -455,8 +479,9 @@ export function Schedule() {
         <>
           {!me?.student && (
             <p className="mb-4 text-amber-900 text-sm bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-              Class schedules are tied to a student profile. If you&apos;re a student or PhD candidate, use{" "}
-              <strong>Profile</strong> to set your role and Student ID, then return here to add classes.
+              Class schedules use a linked student profile (same record for undergrad, PhD candidate, or staff taking
+              classes). Changing your role does not remove that link or your saved classes. If you have no profile yet,
+              use <strong>Profile</strong> to set your role and Student ID, then add classes here.
             </p>
           )}
           <p className="text-slate-600 text-sm mb-6">

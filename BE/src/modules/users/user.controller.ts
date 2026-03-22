@@ -5,7 +5,6 @@ import * as userService from "./user.service";
 import * as studentService from "../students/student.service";
 import * as classScheduleService from "../classSchedule/classSchedule.service";
 import * as arrivalRecommendationService from "../arrival/arrivalRecommendation.service";
-import { hasPlausibleMeetingTimes } from "../classes/courseMeetingTime.util";
 import { createUserSchema, loginSchema, patchMeSchema, updateUserSchema } from "./user.schema";
 import type { AuthUser } from "../../middleware/auth";
 import { validate } from "../../utils/validate";
@@ -123,11 +122,8 @@ export async function patchMe(req: Request, res: Response) {
   let full = await userService.findById(authUser.id);
   if (!full) return res.status(404).json({ error: "User not found" });
 
-  if (data.role === "staff" && full.student) {
-    await studentService.clearUserLinkByUserId(full.id);
-    full = await userService.findById(authUser.id);
-    if (!full) return res.status(404).json({ error: "User not found" });
-  }
+  // Never unlink the student profile on role change (staff, student, or PhD candidate). Schedules are keyed by
+  // student id; clearing the link would hide enrollments. Parking still follows `role` + `resident` on the user.
 
   if (data.email !== undefined) {
     const existing = await userService.findByEmail(data.email);
@@ -256,12 +252,7 @@ export async function mySchedule(req: Request, res: Response) {
       };
     })
   );
-  const visible = withDetails.filter(
-    (row) =>
-      !row.course ||
-      hasPlausibleMeetingTimes(row.course.startTime, row.course.endTime)
-  );
-  res.json(visible);
+  res.json(withDetails);
 }
 
 export async function list(req: Request, res: Response) {

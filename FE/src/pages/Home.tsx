@@ -126,7 +126,6 @@ function DayParkingPlanCard(props: {
               {c.classCode}
               {c.courseName ? ` - ${c.courseName}` : ""} starts at {formatLocalTime(c.startsAt)}.
             </p>
-            <p className="text-xs text-unb-red font-medium pt-1">Open lot map (stall highlighted)</p>
           </Link>
         </li>
       );
@@ -177,7 +176,6 @@ function DayParkingPlanCard(props: {
             {c.classCode}
             {c.courseName ? ` - ${c.courseName}` : ""} starts at {formatLocalTime(c.startsAt)}.
           </p>
-          <p className="text-xs text-amber-800 font-medium pt-1">Open lot map (stall highlighted)</p>
         </Link>
       </li>
     );
