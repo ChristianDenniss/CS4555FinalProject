@@ -60,7 +60,7 @@ export interface PublicUser {
   name: string | null;
   createdAt: string;
   role: "staff" | "student" | "phd_candidate";
-  /** On-campus resident — resident parking eligibility */
+  /** On-campus resident; resident parking eligibility */
   resident: boolean;
   /** Accessible / disabled parking stall eligibility */
   disabled: boolean;
@@ -117,4 +117,78 @@ export interface ScheduleEntry {
     capacity: number | null;
   } | null;
   studentsEnrolled: number;
+}
+
+/** GET /api/users/me/arrival-recommendation?date=YYYY-MM-DD */
+export interface ArrivalClassSummary {
+  classIndex: number;
+  scheduleEntryId: string;
+  classId: string;
+  classCode: string;
+  courseName: string | null;
+  building: string | null;
+  room: string | null;
+  inferredFloor: number;
+  startsAt: string;
+  endsAt: string;
+}
+
+export interface ArrivalTimingBreakdown {
+  walkMinutesFromLotToBuilding: number;
+  inBuildingNavigationMinutes: number;
+  lotCongestionBufferMinutes: number;
+  prepBufferMinutes: number;
+  totalTravelMinutes: number;
+  recommendedArriveBy: string;
+}
+
+export type DayArrivalSegment =
+  | {
+      type: "initial_arrival";
+      targetClass: ArrivalClassSummary;
+      building: { id: string; name: string; code: string | null };
+      parking: {
+        lot: ParkingLot;
+        spot: ParkingSpot;
+        distanceMeters: number;
+        freeSpotsInSelectedLot: number;
+        occupancyPercent: number;
+      };
+      timing: ArrivalTimingBreakdown;
+    }
+  | {
+      type: "stay_on_campus";
+      gapMinutes: number;
+      previousClass: ArrivalClassSummary;
+      nextClass: ArrivalClassSummary;
+      previousEndsAt: string;
+      nextStartsAt: string;
+    }
+  | {
+      type: "return_and_park";
+      gapAfterPreviousClassMinutes: number;
+      targetClass: ArrivalClassSummary;
+      building: { id: string; name: string; code: string | null };
+      parking: {
+        lot: ParkingLot;
+        spot: ParkingSpot;
+        distanceMeters: number;
+        freeSpotsInSelectedLot: number;
+        occupancyPercent: number;
+      };
+      timing: ArrivalTimingBreakdown;
+    };
+
+export interface DayArrivalPlanResponse {
+  selectedDate: string;
+  /** Catalog term codes used for this plan (e.g. Winter 2026 as `2026/WI`). */
+  includedTermCodes: string[];
+  scheduleNote: string;
+  gapMinutesAssumeLeftCampus: number;
+  segments: DayArrivalSegment[];
+  assumptions: {
+    walkMetersPerMinute: number;
+    minutesPerFloor: number;
+    congestionModel: string;
+  };
 }

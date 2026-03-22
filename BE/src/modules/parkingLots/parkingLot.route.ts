@@ -1,11 +1,13 @@
 import { Router } from "express";
 import * as controller from "./parkingLot.controller";
 import { cacheMiddleware, invalidateCacheMiddleware } from "../../middleware/cache";
+import { optionalAuth } from "../../middleware/auth";
 
 const router = Router();
 
 router.post(
   "/recommendation",
+  optionalAuth,
   cacheMiddleware({
     prefix: "parking-lots-recommendation",
     ttlSeconds: 15,

@@ -2,6 +2,8 @@ import { AppDataSource } from "../../db/data-source";
 import { ParkingLot } from "./parkingLot.entity";
 import { ParkingSpot } from "../parkingSpots/parkingSpot.entity";
 import * as lotBuildingDistanceService from "../buildings/lotBuildingDistance.service";
+import type { UserParkingEligibility } from "./parkingLotEligibility";
+import { isUserEligibleForLot } from "./parkingLotEligibility";
 
 const repo = () => AppDataSource.getRepository(ParkingLot);
 const spotRepo = () => AppDataSource.getRepository(ParkingSpot);
@@ -87,6 +89,7 @@ type SpotStatus = "occupied" | "empty";
 export async function recommendBestParking(params: {
   buildingId: string;
   stateMode: "current" | "predicted";
+  parkingEligibility?: UserParkingEligibility;
   predictedFreeSpotsByLotId?: Record<string, number>;
   predictedSpotStatusByLotId?: Record<string, Record<string, SpotStatus>>;
 }): Promise<{
@@ -99,7 +102,13 @@ export async function recommendBestParking(params: {
   const rankedLots = await findRecommendationsByBuilding(params.buildingId);
   if (rankedLots.length === 0) return null;
 
-  for (const ranked of rankedLots) {
+  const eligibility = params.parkingEligibility;
+  const eligibleRanked =
+    eligibility != null
+      ? rankedLots.filter((r) => isUserEligibleForLot(r.lot.name, eligibility))
+      : rankedLots;
+
+  for (const ranked of eligibleRanked) {
     const lotId = ranked.lot.id;
     const spots = await spotRepo().find({
       where: { parkingLotId: lotId },

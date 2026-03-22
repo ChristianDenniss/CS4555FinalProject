@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import * as parkingLotService from "./parkingLot.service";
 import { createParkingLotSchema, recommendParkingSchema } from "./parkingLot.schema";
 import { validate } from "../../utils/validate";
+import type { AuthUser } from "../../middleware/auth";
+import { DEFAULT_ANONYMOUS_PARKING_ELIGIBILITY } from "./parkingLotEligibility";
 
 export async function list(req: Request, res: Response) {
   const buildingId = req.query.buildingId as string | undefined;
@@ -45,9 +47,17 @@ export async function recommend(req: Request, res: Response) {
   if (!result.valid) return res.status(400).json({ error: result.errors.join("; ") });
 
   const data = result.data!;
+  const authUser = (req as Request & { user?: AuthUser }).user;
+  const parkingEligibility = authUser
+    ? { role: authUser.role, resident: authUser.resident }
+    : DEFAULT_ANONYMOUS_PARKING_ELIGIBILITY;
+
   const recommendation = await parkingLotService.recommendBestParking({
-    ...data,
+    buildingId: data.buildingId,
     stateMode: data.stateMode ?? "current",
+    parkingEligibility,
+    predictedFreeSpotsByLotId: data.predictedFreeSpotsByLotId,
+    predictedSpotStatusByLotId: data.predictedSpotStatusByLotId,
   });
   if (!recommendation) {
     return res.status(404).json({

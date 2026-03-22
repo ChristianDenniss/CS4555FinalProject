@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useParams, Link, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
 import type { ParkingLot, ParkingSpot } from "../api/types";
 import { LotHeatMap } from "../components/LotHeatMap";
@@ -13,12 +13,20 @@ const lotSvgLoaders = import.meta.glob<string>("../images/svgs/*.svg", {
 
 export function LotDetail() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const [lot, setLot] = useState<ParkingLot | null>(null);
   const [spots, setSpots] = useState<ParkingSpot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [section, setSection] = useState("");
   const [svgMarkup, setSvgMarkup] = useState<string | null>(null);
+  const heatMapSectionRef = useRef<HTMLElement>(null);
+
+  const highlightSpotId = useMemo(() => {
+    const raw = searchParams.get("spot")?.trim();
+    if (!raw) return null;
+    return spots.some((s) => s.id === raw) ? raw : null;
+  }, [searchParams, spots]);
 
   // Always fetch all spots for the lot so the heat map can match every SVG shape; filter for list by section below
   useEffect(() => {
@@ -75,6 +83,11 @@ export function LotDetail() {
     }
   }, [lot?.name]);
 
+  useEffect(() => {
+    if (!highlightSpotId || loading) return;
+    heatMapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [highlightSpotId, loading, id]);
+
   const refreshSpots = () => {
     if (!id) return;
     api.get<ParkingSpot[]>(`/api/parking-lots/${id}/spots`).then(setSpots).catch((e) => setError(e.message));
@@ -129,11 +142,21 @@ export function LotDetail() {
         <span className="rounded border border-slate-200 bg-white px-3 py-1 text-sm text-slate-600">Parking Lot Capacity: {lot.capacity}</span>
       </div>
 
-      <section className="mb-4">
+      {highlightSpotId && (
+        <p className="mb-3 text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          Amber outline: stall suggested by your day parking plan.{" "}
+          <Link to={`/lot/${id}`} className="text-unb-red font-medium underline underline-offset-2">
+            Clear highlight
+          </Link>
+        </p>
+      )}
+
+      <section ref={heatMapSectionRef} className="mb-4 scroll-mt-24">
         <LotHeatMap
           spots={spots}
           svgMarkup={svgMarkup}
           onSpotClick={toggleStatus}
+          highlightSpotId={highlightSpotId}
           showLegend
           className="min-h-[200px]"
         />
@@ -170,9 +193,9 @@ export function LotDetail() {
               spot.currentStatus === "occupied"
                 ? "border-red-200 bg-red-50 text-red-700 hover:border-unb-red/60"
                 : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-unb-red/60"
-            }`}
+            } ${spot.id === highlightSpotId ? "ring-2 ring-amber-500 ring-offset-2 ring-offset-slate-50" : ""}`}
             onClick={() => toggleStatus(spot)}
-            title={`${spot.label} — ${spot.currentStatus}`}
+            title={`${spot.label} - ${spot.currentStatus}`}
           >
             {spot.label}
           </button>

@@ -36,7 +36,10 @@ export async function findByUserId(userId: string): Promise<Student | null> {
   return repo().findOne({ where: { userId } });
 }
 
-/** Detach the student profile from this user (e.g. role changed to staff). */
+/**
+ * Detach the student profile from this user (sets `userId` to null).
+ * Not used by PATCH /users/me; role changes no longer auto-unlink. Keep for rare admin/maintenance use only.
+ */
 export async function clearUserLinkByUserId(userId: string): Promise<void> {
   const s = await findByUserId(userId);
   if (!s) return;

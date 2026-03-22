@@ -1,9 +1,33 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
-import type { ParkingLot, ParkingSpot } from "../api/types";
+import type {
+  DayArrivalPlanResponse,
+  DayArrivalSegment,
+  ParkingLot,
+  ParkingSpot,
+} from "../api/types";
 import { ParkingMap } from "../components/ParkingMap";
 import unbLogoAlternate from "../images/UNBlogoAlternate.png";
+
+const tokenKey = "parking_twin_token";
+
+function formatLocalTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function spotLabel(spot: ParkingSpot): string {
+  if (spot.label?.trim()) return spot.label.trim();
+  return `${spot.section} ${spot.row} #${spot.index}`;
+}
+
+/** Open lot heat map with a specific stall outlined (see LotDetail `?spot=`). */
+function lotHeatMapHref(lotId: string, spotId: string): string {
+  return `/lot/${lotId}?spot=${encodeURIComponent(spotId)}`;
+}
 
 /** Sections GeoJSON from /api/earth-engine/sections */
 interface SectionsGeoJSON {
@@ -34,6 +58,203 @@ function getOccupancyColorClass(pct: number): string {
   return "text-green-800 font-medium";                  // Very open (< 40%)
 }
 
+function DayParkingPlanCard(props: {
+  token: string | null;
+  planDate: string;
+  onPlanDateChange: (v: string) => void;
+}) {
+  const { token, planDate, onPlanDateChange } = props;
+  const [plan, setPlan] = useState<DayArrivalPlanResponse | null>(null);
+  const [planLoading, setPlanLoading] = useState(false);
+  const [planError, setPlanError] = useState<string | null>(null);
+
+  const loadPlan = useCallback(() => {
+    if (!token) {
+      setPlan(null);
+      setPlanError(null);
+      setPlanLoading(false);
+      return;
+    }
+    if (!planDate.trim()) {
+      setPlan(null);
+      setPlanError(null);
+      setPlanLoading(false);
+      return;
+    }
+    setPlanLoading(true);
+    setPlanError(null);
+    const q = new URLSearchParams({ date: planDate });
+    api
+      .get<DayArrivalPlanResponse>(`/api/users/me/arrival-recommendation?${q}`, token)
+      .then(setPlan)
+      .catch((e: Error) => {
+        setPlan(null);
+        setPlanError(e.message ?? "Could not load plan");
+      })
+      .finally(() => setPlanLoading(false));
+  }, [token, planDate]);
+
+  useEffect(() => {
+    loadPlan();
+  }, [loadPlan]);
+
+  const renderSegment = (seg: DayArrivalSegment, i: number) => {
+    if (seg.type === "initial_arrival") {
+      const c = seg.targetClass;
+      return (
+        <li key={i}>
+          <Link
+            to={lotHeatMapHref(seg.parking.lot.id, seg.parking.spot.id)}
+            className="block rounded-lg border border-slate-200 bg-slate-50/80 p-4 space-y-2 transition-colors hover:border-unb-red/50 hover:bg-white focus-visible:outline focus-visible:ring-2 focus-visible:ring-unb-red focus-visible:ring-offset-2"
+            aria-label={`Open ${seg.parking.lot.name} map and highlight spot ${spotLabel(seg.parking.spot)}`}
+          >
+            <p className="text-xs font-semibold uppercase tracking-wide text-unb-red">
+              Initial arrival (class {c.classIndex})
+            </p>
+            <p className="font-medium text-slate-900">
+              Arrive by{" "}
+              <span className="text-unb-red">{formatLocalTime(seg.timing.recommendedArriveBy)}</span>{" "}
+              local time
+            </p>
+            <p className="text-sm text-slate-700">
+              Park in <strong>{seg.parking.lot.name}</strong>, spot{" "}
+              <strong>{spotLabel(seg.parking.spot)}</strong> (~{Math.round(seg.parking.distanceMeters)} m
+              walk to {seg.building.name}
+              {c.room ? `, room ${c.room}` : ""}).
+            </p>
+            <p className="text-sm text-slate-600">
+              {c.classCode}
+              {c.courseName ? ` - ${c.courseName}` : ""} starts at {formatLocalTime(c.startsAt)}.
+            </p>
+          </Link>
+        </li>
+      );
+    }
+    if (seg.type === "stay_on_campus") {
+      return (
+        <li key={i} className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-4 space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
+            Between classes
+          </p>
+          <p className="text-sm text-slate-800">
+            <strong>Stay on campus</strong> between{" "}
+            <span className="font-medium">{seg.previousClass.classCode}</span> (ends ~{" "}
+            {formatLocalTime(seg.previousEndsAt)}) and{" "}
+            <span className="font-medium">{seg.nextClass.classCode}</span> (starts{" "}
+            {formatLocalTime(seg.nextStartsAt)}). Gap ≈ {seg.gapMinutes} minutes; under{" "}
+            {plan?.gapMinutesAssumeLeftCampus ?? 60} minutes, so no new parking actions are assumed.
+          </p>
+        </li>
+      );
+    }
+    const c = seg.targetClass;
+    return (
+      <li key={i}>
+        <Link
+          to={lotHeatMapHref(seg.parking.lot.id, seg.parking.spot.id)}
+          className="block rounded-lg border border-amber-200 bg-amber-50/70 p-4 space-y-2 transition-colors hover:border-amber-400 hover:bg-amber-50 focus-visible:outline focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+          aria-label={`Open ${seg.parking.lot.name} map and highlight spot ${spotLabel(seg.parking.spot)}`}
+        >
+          <p className="text-xs font-semibold uppercase tracking-wide text-amber-900">
+            Return &amp; park (class {c.classIndex})
+          </p>
+          <p className="text-sm text-slate-700">
+            Long break (~{seg.gapAfterPreviousClassMinutes} min after your previous class). If you leave
+            campus, <strong>return by</strong>{" "}
+            <span className="text-unb-red font-semibold">
+              {formatLocalTime(seg.timing.recommendedArriveBy)}
+            </span>{" "}
+            local time.
+          </p>
+          <p className="text-sm text-slate-700">
+            Park in <strong>{seg.parking.lot.name}</strong>, spot{" "}
+            <strong>{spotLabel(seg.parking.spot)}</strong> (~{Math.round(seg.parking.distanceMeters)} m to{" "}
+            {seg.building.name}
+            {c.room ? `, room ${c.room}` : ""}).
+          </p>
+          <p className="text-sm text-slate-600">
+            {c.classCode}
+            {c.courseName ? ` - ${c.courseName}` : ""} starts at {formatLocalTime(c.startsAt)}.
+          </p>
+        </Link>
+      </li>
+    );
+  };
+
+  return (
+    <section
+      className="rounded-2xl border border-slate-200 bg-white p-6 space-y-4"
+      aria-labelledby="day-parking-plan-heading"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 id="day-parking-plan-heading" className="text-lg font-semibold text-slate-900">
+            Your day parking plan
+          </h2>
+          <p className="text-sm text-slate-500 mt-1 max-w-2xl">
+            Pick a date to load your plan. Only <strong>initial arrival</strong> and{" "}
+            <strong>return &amp; park</strong> steps are clickable (they open the lot heat map with the suggested
+            stall highlighted). <strong>Between classes</strong> / stay-on-campus blocks are informational only. Long
+            gaps (&gt; 60 min, or the threshold shown below once loaded) assume you left campus and need to park
+            again.
+          </p>
+        </div>
+        {token ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="text-sm text-slate-600 flex items-center gap-2">
+              Date
+              <input
+                type="date"
+                value={planDate}
+                onChange={(e) => onPlanDateChange(e.target.value)}
+                className="rounded border border-slate-200 px-2 py-1.5 text-slate-800 text-sm"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={loadPlan}
+              disabled={planLoading || !planDate.trim()}
+              className="rounded bg-unb-red text-white text-sm font-medium px-3 py-1.5 hover:opacity-90 disabled:opacity-50"
+            >
+              {planLoading ? "Loading…" : "Refresh"}
+            </button>
+          </div>
+        ) : null}
+      </div>
+
+      {!token ? (
+        <p className="text-sm text-slate-600">
+          <Link to="/auth" className="text-unb-red font-medium underline underline-offset-2">
+            Sign in
+          </Link>{" "}
+          with a linked student profile and schedule to see personalized recommendations.
+        </p>
+      ) : !planDate.trim() ? (
+        <p className="text-sm text-slate-600 border border-dashed border-slate-200 rounded-lg px-4 py-6 text-center bg-slate-50/80">
+          Select a date above to load your parking plan for that day.
+        </p>
+      ) : planLoading ? (
+        <p className="text-sm text-slate-500">Building your plan…</p>
+      ) : planError ? (
+        <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          {planError}
+        </p>
+      ) : plan && plan.segments.length > 0 ? (
+        <div className="space-y-3">
+          <p className="text-xs text-slate-500">{plan.scheduleNote}</p>
+          <ol className="space-y-3 list-none p-0 m-0">{plan.segments.map(renderSegment)}</ol>
+          <p className="text-xs text-slate-400">
+            Model: walk {plan.assumptions.walkMetersPerMinute} m/min,{" "}
+            {plan.assumptions.minutesPerFloor} min/floor in-building; {plan.assumptions.congestionModel}.
+          </p>
+        </div>
+      ) : (
+        <p className="text-sm text-slate-500">No plan returned for this date.</p>
+      )}
+    </section>
+  );
+}
+
 export function Home() {
   const navigate = useNavigate();
   const [lots, setLots] = useState<ParkingLot[]>([]);
@@ -44,6 +265,23 @@ export function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lotSort, setLotSort] = useState<LotSortOption>("biggest");
+  const [token, setToken] = useState<string | null>(() =>
+    typeof window !== "undefined" ? localStorage.getItem(tokenKey) : null
+  );
+  const [planDate, setPlanDate] = useState("");
+
+  useEffect(() => {
+    const syncToken = () => setToken(localStorage.getItem(tokenKey));
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === tokenKey) setToken(e.newValue);
+    };
+    window.addEventListener("focus", syncToken);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("focus", syncToken);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
 
   useEffect(() => {
     Promise.all([
@@ -241,6 +479,8 @@ export function Home() {
           {statsOverlay}
         </ParkingMap>
       </section>
+
+      <DayParkingPlanCard token={token} planDate={planDate} onPlanDateChange={setPlanDate} />
 
       <section>
         <div className="flex flex-wrap items-center justify-between gap-3 mb-3">

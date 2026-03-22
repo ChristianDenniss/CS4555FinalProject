@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "../api/client";
+import { api, ApiError } from "../api/client";
 import type { Course, MeResponse, ScheduleEntry } from "../api/types";
 
 const tokenKey = "parking_twin_token";
@@ -52,6 +52,21 @@ export function Schedule() {
   const [profileStudentId, setProfileStudentId] = useState("");
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
+  const [authNotice, setAuthNotice] = useState<string | null>(null);
+
+  const clearSession = () => {
+    localStorage.removeItem(tokenKey);
+    setToken(null);
+    setMe(null);
+    setSchedule([]);
+    setError(null);
+  };
+
+  const handleLogout = () => {
+    clearSession();
+    setAuthNotice(null);
+    navigate("/");
+  };
 
   // Load course catalog on mount so the add-class dropdown always has data
   useEffect(() => {
@@ -73,8 +88,16 @@ export function Schedule() {
       .then(([meData, scheduleData]) => {
         setMe(meData);
         setSchedule(scheduleData);
+        setAuthNotice(null);
       })
-      .catch((e) => setError(e.message))
+      .catch((e: unknown) => {
+        if (e instanceof ApiError && e.status === 401) {
+          setAuthNotice("Your session expired or is invalid. Sign in again to continue.");
+          clearSession();
+          return;
+        }
+        setError(e instanceof Error ? e.message : "Request failed");
+      })
       .finally(() => setLoading(false));
   }, [token]);
 
@@ -129,17 +152,18 @@ export function Schedule() {
       .then(() =>
         api.get<ScheduleEntry[]>("/api/users/me/schedule", token ?? undefined).then(setSchedule)
       )
-      .catch((e) => setError(e.message));
+      .catch((e: unknown) => {
+        if (e instanceof ApiError && e.status === 401) {
+          setAuthNotice("Your session expired. Sign in again.");
+          clearSession();
+          return;
+        }
+        setError(e instanceof Error ? e.message : "Request failed");
+      });
   };
 
   const handleRemoveClick = (entry: ScheduleEntry) => {
     setConfirmRemove(entry);
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem(tokenKey);
-    setToken(null);
-    navigate("/");
   };
 
   const needsStudentIdForSave =
@@ -149,11 +173,30 @@ export function Schedule() {
     e.preventDefault();
     if (!token || !me) return;
     setProfileMessage(null);
+
+    const name = profileName.trim();
+    const email = profileEmail.trim();
+    if (!name) {
+      setProfileMessage("Name is required.");
+      return;
+    }
+    if (!email) {
+      setProfileMessage("Email is required.");
+      return;
+    }
+
+    if (needsStudentIdForSave && !profileStudentId.trim()) {
+      setProfileMessage(
+        "Student ID is required when your role is Student or PhD candidate and no student profile is linked yet."
+      );
+      return;
+    }
+
     setProfileSaving(true);
     try {
       const body: Record<string, unknown> = {
-        name: profileName.trim(),
-        email: profileEmail.trim(),
+        name,
+        email,
         role: profileRole,
         resident: profileResident,
         disabled: profileDisabled,
@@ -165,6 +208,11 @@ export function Schedule() {
       setMe(updated);
       setProfileMessage("Profile saved.");
     } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        setAuthNotice("Your session expired. Sign in again.");
+        clearSession();
+        return;
+      }
       setProfileMessage(err instanceof Error ? err.message : "Could not save profile");
     } finally {
       setProfileSaving(false);
@@ -180,14 +228,26 @@ export function Schedule() {
         setSchedule((prev) => prev.filter((e) => e.id !== confirmRemove.id));
         setConfirmRemove(null);
       })
-      .catch((e) => setError(e.message))
+      .catch((e: unknown) => {
+        if (e instanceof ApiError && e.status === 401) {
+          setAuthNotice("Your session expired. Sign in again.");
+          clearSession();
+          return;
+        }
+        setError(e instanceof Error ? e.message : "Request failed");
+      })
       .finally(() => setRemovingId(null));
   };
 
   if (!token) {
     return (
-      <div className="max-w-3xl mx-auto px-6 py-10 text-center">
-        <p className="text-slate-700 mb-4">Sign in to view and manage your class schedule.</p>
+      <div className="max-w-3xl mx-auto px-6 py-10 text-center space-y-4">
+        {authNotice && (
+          <p className="rounded-lg border border-amber-200 bg-amber-50 text-amber-900 text-sm px-4 py-3 max-w-md mx-auto">
+            {authNotice}
+          </p>
+        )}
+        <p className="text-slate-700">Sign in to view and manage your class schedule.</p>
         <button
           type="button"
           onClick={() => navigate("/auth")}
@@ -212,15 +272,54 @@ export function Schedule() {
 
   if (error) {
     return (
-      <div className="max-w-3xl mx-auto px-6 py-10">
-        <p className="text-red-600 mb-4">{error}</p>
-        <button
-          type="button"
-          onClick={() => setError(null)}
-          className="text-unb-red font-medium"
-        >
-          Dismiss
-        </button>
+      <div className="max-w-3xl mx-auto px-6 py-10 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-2xl font-bold text-slate-900">My account</h1>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="px-4 py-2 rounded-lg border-2 border-unb-red bg-white text-unb-red font-semibold hover:bg-unb-red hover:text-white transition-colors"
+          >
+            Log out
+          </button>
+        </div>
+        <p className="text-red-600">{error}</p>
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              setLoading(true);
+              Promise.all([
+                api.get<MeResponse>("/api/users/me", token!),
+                api.get<ScheduleEntry[]>("/api/users/me/schedule", token!),
+              ])
+                .then(([meData, scheduleData]) => {
+                  setMe(meData);
+                  setSchedule(scheduleData);
+                })
+                .catch((e: unknown) => {
+                  if (e instanceof ApiError && e.status === 401) {
+                    setAuthNotice("Your session expired. Sign in again.");
+                    clearSession();
+                    return;
+                  }
+                  setError(e instanceof Error ? e.message : "Request failed");
+                })
+                .finally(() => setLoading(false));
+            }}
+            className="px-4 py-2 rounded-lg bg-unb-red text-white font-semibold hover:bg-unb-red-dark"
+          >
+            Try again
+          </button>
+          <button
+            type="button"
+            onClick={() => setError(null)}
+            className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 font-medium hover:bg-slate-50"
+          >
+            Dismiss
+          </button>
+        </div>
       </div>
     );
   }
@@ -274,7 +373,7 @@ export function Schedule() {
           <p className="text-slate-600 text-sm mb-6">
             These details are used to recommend parking you&apos;re eligible for. Password cannot be changed here yet.
           </p>
-          <form onSubmit={handleProfileSave} className="space-y-4 max-w-lg">
+          <form onSubmit={handleProfileSave} noValidate className="space-y-4 max-w-lg">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
               <input
@@ -317,7 +416,7 @@ export function Schedule() {
                   value={profileStudentId}
                   onChange={(e) => setProfileStudentId(e.target.value)}
                   placeholder="Required to link your student profile"
-                  required
+                  autoComplete="off"
                   className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-unb-red focus:border-unb-red"
                 />
                 <p className="text-xs text-slate-500 mt-1">
@@ -380,8 +479,9 @@ export function Schedule() {
         <>
           {!me?.student && (
             <p className="mb-4 text-amber-900 text-sm bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-              Class schedules are tied to a student profile. If you&apos;re a student or PhD candidate, use{" "}
-              <strong>Profile</strong> to set your role and Student ID, then return here to add classes.
+              Class schedules use a linked student profile (same record for undergrad, PhD candidate, or staff taking
+              classes). Changing your role does not remove that link or your saved classes. If you have no profile yet,
+              use <strong>Profile</strong> to set your role and Student ID, then add classes here.
             </p>
           )}
           <p className="text-slate-600 text-sm mb-6">
@@ -412,7 +512,7 @@ export function Schedule() {
                   )}
                 </div>
                 <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-sm text-slate-600">
-                  <span>{c?.startTime} – {c?.endTime}</span>
+                  <span>{c?.startTime} - {c?.endTime}</span>
                   {(c?.enrolled != null && c?.capacity != null) ? (
                     <span>{c.enrolled} / {c.capacity} enrolled</span>
                   ) : (
@@ -524,7 +624,7 @@ export function Schedule() {
                         )}
                         {(course.enrolled != null || course.capacity != null) && (
                           <div className="text-slate-500 text-xs mt-0.5">
-                            {course.startTime}–{course.endTime}
+                            {course.startTime}-{course.endTime}
                             {course.enrolled != null && course.capacity != null && (
                               <> · {course.enrolled}/{course.capacity} enrolled</>
                             )}
