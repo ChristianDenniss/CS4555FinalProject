@@ -2209,15 +2209,15 @@ components:
           type: number
           minimum: 0
         parkingLot:
-          oneOf:
-            - $ref: "#/components/schemas/ParkingLot"
-            - type: "null"
+          nullable: true
           description: Present when relation is loaded (e.g. list with filter)
+          allOf:
+            - $ref: "#/components/schemas/ParkingLot"
         building:
-          oneOf:
-            - $ref: "#/components/schemas/Building"
-            - type: "null"
+          nullable: true
           description: Present when relation is loaded
+          allOf:
+            - $ref: "#/components/schemas/Building"
 
     CreateLotBuildingDistance:
       type: object
