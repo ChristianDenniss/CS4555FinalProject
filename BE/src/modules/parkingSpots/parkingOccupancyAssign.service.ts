@@ -16,7 +16,7 @@ import { randomInt } from "crypto";
 import { DateTime } from "luxon";
 import * as parkingSpotService from "./parkingSpot.service";
 import { invalidateCache } from "../../middleware/cache";
-import { getArrivalPlanTermCodes } from "../users/arrivalRecommendation.service";
+import { getArrivalPlanTermCodes, normalizeArrivalTermCode } from "../../utils/arrivalPlanTerms";
 
 const D0_M = 35;
 const DIST_POW = 1.45;
@@ -56,14 +56,10 @@ export function sampleKTotalForSnapshot(r: number, totalSpots: number): number {
   return randomIntInclusive(lo, hi);
 }
 
-function normalizeTermCode(s: string): string {
-  return s.trim().toUpperCase();
-}
-
 function courseMatchesArrivalTermFilter(course: Course, allowed: ReadonlySet<string>): boolean {
   const t = course.term?.trim();
   if (!t) return false;
-  return allowed.has(normalizeTermCode(t));
+  return allowed.has(normalizeArrivalTermCode(t));
 }
 
 function clockToMin(clock: string): number | null {
@@ -89,7 +85,7 @@ export function isGeneralLotName(name: string): boolean {
  * Sum enrolled (or 1) per building id for courses overlapping the 15m window on scenario calendar day.
  */
 export async function buildingDemandForScenarioWindow(slotStartMinutes: number): Promise<Map<string, number>> {
-  const allowed = new Set(getArrivalPlanTermCodes().map(normalizeTermCode));
+  const allowed = new Set(getArrivalPlanTermCodes().map(normalizeArrivalTermCode));
   const courses = await courseService.findAll();
   const w0 = slotStartMinutes;
   const w1 = slotStartMinutes + 15;
@@ -174,9 +170,13 @@ export function assignStatusesForLots(
   spots: SpotAssignInput[],
   scenarioKey: string,
   kTotal: number,
-  lotWeights: Map<string, number>
+  lotWeights: Map<string, number>,
+  assignOpts?: { deterministic?: boolean }
 ): Map<string, "occupied" | "empty"> {
-  const noiseScale = parseEnvFloat("OCC_SNAPSHOT_SCORE_NOISE", DEFAULT_SCORE_NOISE, 0, 80);
+  const noiseScale =
+    assignOpts?.deterministic === true
+      ? 0
+      : parseEnvFloat("OCC_SNAPSHOT_SCORE_NOISE", DEFAULT_SCORE_NOISE, 0, 80);
 
   const byLot = new Map<string, SpotAssignInput[]>();
   for (const s of spots) {
@@ -241,9 +241,12 @@ function simpleHash(s: string): number {
   return h;
 }
 
+export type ScenarioAssignmentMode = "deterministic" | "stochastic";
+
 export async function computeLotWeightsAndK(
   spots: SpotAssignInput[],
-  scenarioMoncton: DateTime
+  scenarioMoncton: DateTime,
+  kMode: "sample" | "deterministic" = "sample"
 ): Promise<{ kTotal: number; lotWeights: Map<string, number> }> {
   const slots = getWinter2026Slots();
   const z = scenarioMoncton.setZone(UNBSJ_TIMEZONE);
@@ -254,7 +257,10 @@ export async function computeLotWeightsAndK(
   const prof = campusOccupancyInstantForMoncton(z);
   const totalSpots = spots.length;
   const r = targetOccupancyRatio(prof.carsCurr, totalSpots);
-  const kTotal = sampleKTotalForSnapshot(r, totalSpots);
+  const kTotal =
+    kMode === "deterministic"
+      ? Math.min(totalSpots, Math.max(0, Math.round(r * totalSpots)))
+      : sampleKTotalForSnapshot(r, totalSpots);
 
   const demand = await buildingDemandForScenarioWindow(slotStartMin);
   const allDist = await lotBuildingDistanceService.findAll({});
@@ -288,11 +294,16 @@ export async function computeLotWeightsAndK(
   return { kTotal, lotWeights };
 }
 
-export async function applyScenarioOccupancy(dateYmd: string, timeHm: string): Promise<{
-  /** Spot rows whose status changed (actual DB writes). */
-  updated: number;
+/**
+ * Deterministic snapshot at Moncton date/time (same math as `applyScenarioOccupancy` with `mode: "deterministic"`).
+ * Used for day-parking recommendations so suggested stalls match empty slots under the forecast.
+ */
+export async function previewScenarioAssignmentAt(dateYmd: string, timeHm: string): Promise<{
+  spotIdToStatus: Map<string, "occupied" | "empty">;
+  predictedSpotStatusByLotId: Record<string, Record<string, "occupied" | "empty">>;
   kTotal: number;
   totalSpots: number;
+  spotRows: { id: string; parkingLotId: string }[];
 }> {
   const dt = parseScenarioMoncton(dateYmd, timeHm);
   if (!dt) throw new Error("Invalid scenario date or time");
@@ -305,10 +316,59 @@ export async function applyScenarioOccupancy(dateYmd: string, timeHm: string): P
     slotIndex: s.slotIndex,
   }));
 
-  const { kTotal, lotWeights } = await computeLotWeightsAndK(spots, dt);
-  const rollId = `${Date.now().toString(36)}-${randomIntInclusive(0, 1_000_000_000)}`;
-  const scenarioKey = `${dateYmd}|${timeHm}|${rollId}`;
-  const statuses = assignStatusesForLots(spots, scenarioKey, kTotal, lotWeights);
+  const { kTotal, lotWeights } = await computeLotWeightsAndK(spots, dt, "deterministic");
+  const scenarioKey = `${dateYmd}|${timeHm}`;
+  const statuses = assignStatusesForLots(spots, scenarioKey, kTotal, lotWeights, { deterministic: true });
+
+  const predictedSpotStatusByLotId: Record<string, Record<string, "occupied" | "empty">> = {};
+  for (const row of rows) {
+    const st = statuses.get(row.id) ?? "empty";
+    if (!predictedSpotStatusByLotId[row.parkingLotId]) {
+      predictedSpotStatusByLotId[row.parkingLotId] = {};
+    }
+    predictedSpotStatusByLotId[row.parkingLotId]![row.id] = st;
+  }
+
+  return {
+    spotIdToStatus: statuses,
+    predictedSpotStatusByLotId,
+    kTotal,
+    totalSpots: rows.length,
+    spotRows: rows.map((r) => ({ id: r.id, parkingLotId: r.parkingLotId })),
+  };
+}
+
+export async function applyScenarioOccupancy(
+  dateYmd: string,
+  timeHm: string,
+  options?: { mode?: ScenarioAssignmentMode }
+): Promise<{
+  /** Spot rows whose status changed (actual DB writes). */
+  updated: number;
+  kTotal: number;
+  totalSpots: number;
+}> {
+  const mode = options?.mode ?? "stochastic";
+  const dt = parseScenarioMoncton(dateYmd, timeHm);
+  if (!dt) throw new Error("Invalid scenario date or time");
+
+  const rows = await parkingSpotService.findAllWithLots();
+  const spots: SpotAssignInput[] = rows.map((s) => ({
+    id: s.id,
+    parkingLotId: s.parkingLotId,
+    lotName: s.parkingLot?.name ?? "",
+    slotIndex: s.slotIndex,
+  }));
+
+  const kMode = mode === "deterministic" ? "deterministic" : "sample";
+  const { kTotal, lotWeights } = await computeLotWeightsAndK(spots, dt, kMode);
+  const scenarioKey =
+    mode === "deterministic"
+      ? `${dateYmd}|${timeHm}`
+      : `${dateYmd}|${timeHm}|${Date.now().toString(36)}-${randomIntInclusive(0, 1_000_000_000)}`;
+  const statuses = assignStatusesForLots(spots, scenarioKey, kTotal, lotWeights, {
+    deterministic: mode === "deterministic",
+  });
 
   const updates: { id: string; status: "occupied" | "empty" }[] = [];
   for (const row of rows) {

@@ -45,6 +45,8 @@ interface ParkingMapProps {
   scenarioPlay?: ScenarioPlayControl | null;
   /** Centered spinner while apply-scenario / apply-live runs */
   scenarioLoading?: boolean;
+  /** When set and `scenarioLoading` is true, overrides the default loading line (e.g. day parking plan). */
+  scenarioLoadingMessage?: string;
   /** Live tab after leaving Pick time: show “Nowcasting Scenario…” while apply-live runs */
   nowcastingLiveApply?: boolean;
   /** Optional overlay (e.g. stats card) rendered on top of the map */
@@ -135,11 +137,16 @@ export function ParkingMap({
   scenarioTimeHHmm = "",
   scenarioPlay = null,
   scenarioLoading = false,
+  scenarioLoadingMessage,
   nowcastingLiveApply = false,
   children,
   className = "",
 }: ParkingMapProps) {
-  const loadingCopy = mapLoadingCopy(mapDataMode, scenarioDate, nowcastingLiveApply);
+  const defaultCopy = mapLoadingCopy(mapDataMode, scenarioDate, nowcastingLiveApply);
+  const loadingCopy =
+    scenarioLoading && scenarioLoadingMessage?.trim()
+      ? { text: scenarioLoadingMessage.trim(), aria: scenarioLoadingMessage.trim() }
+      : defaultCopy;
 
   const onEachSection = useCallback(
     (feature: GeoJsonObject, layer: Layer) => {

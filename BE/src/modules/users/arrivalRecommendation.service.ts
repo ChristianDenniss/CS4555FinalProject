@@ -10,6 +10,12 @@ import * as buildingService from "../buildings/building.service";
 import * as parkingLotService from "../parkingLots/parkingLot.service";
 import type { UserParkingEligibility } from "../parkingLots/parkingLotEligibility";
 import { hasPlausibleMeetingTimes } from "../classes/courseMeetingTime.util";
+import * as parkingOccupancyAssign from "../parkingSpots/parkingOccupancyAssign.service";
+import {
+  DEFAULT_ARRIVAL_PLAN_TERM_CODE,
+  getArrivalPlanTermCodes,
+  normalizeArrivalTermCode,
+} from "../../utils/arrivalPlanTerms";
 import * as userService from "./user.service";
 
 /** Walking speed assumption (meters per minute) ~4.8 km/h */
@@ -30,37 +36,12 @@ export const CONGESTION_OCCUPANCY_SCALE = 0.12; // ~12 min at 100% full
  */
 export const GAP_MINUTES_ASSUME_LEFT_CAMPUS = 60;
 
-/**
- * Only schedule rows whose course `term` matches one of these codes are used for parking plans.
- * Default matches scraped UNB catalog: Winter 2026 → `2026/WI`.
- * Override with `ARRIVAL_PLAN_TERM` (single code) or `ARRIVAL_PLAN_TERM_CODES` (comma-separated).
- */
-export const DEFAULT_ARRIVAL_PLAN_TERM_CODE = "2026/WI";
-
 const DEFAULT_CLASS_DURATION_MS = 50 * 60 * 1000;
-
-function normalizeTermCode(s: string): string {
-  return s.trim().toUpperCase();
-}
-
-/** Term codes to include in arrival / day parking recommendations (normalized matching). */
-export function getArrivalPlanTermCodes(): string[] {
-  const multi = process.env.ARRIVAL_PLAN_TERM_CODES?.trim();
-  if (multi) {
-    return multi
-      .split(",")
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0);
-  }
-  const single = process.env.ARRIVAL_PLAN_TERM?.trim();
-  if (single) return [single];
-  return [DEFAULT_ARRIVAL_PLAN_TERM_CODE];
-}
 
 function courseMatchesArrivalTermFilter(course: Course, allowedNormalized: ReadonlySet<string>): boolean {
   const t = course.term?.trim();
   if (!t) return false;
-  return allowedNormalized.has(normalizeTermCode(t));
+  return allowedNormalized.has(normalizeArrivalTermCode(t));
 }
 
 function combineDateAndTime(day: Date, timeStr: string): Date {
@@ -259,43 +240,108 @@ function toClassSummary(
   };
 }
 
+function lotPredictedOccupancyPercent(
+  lotId: string,
+  spotIdToStatus: Map<string, "occupied" | "empty">,
+  spotRows: { id: string; parkingLotId: string }[]
+): number {
+  const inLot = spotRows.filter((r) => r.parkingLotId === lotId);
+  if (inLot.length === 0) return 0;
+  const occ = inLot.filter((r) => (spotIdToStatus.get(r.id) ?? "empty") === "occupied").length;
+  return Math.round((occ / inLot.length) * 100);
+}
+
+/**
+ * Pick a stall using the same deterministic scenario snapshot as the day plan / map apply,
+ * iterating arrive-time until stable (~90s) so congestion buffer matches the forecast lot.
+ */
 async function buildParkingBlockForCourse(
   course: Course,
   startsAt: Date,
   walkMpm: number,
   minPerFloor: number,
   prepBuffer: number,
-  stateMode: "current" | "predicted",
+  _stateMode: "current" | "predicted",
   parkingEligibility: UserParkingEligibility
 ): Promise<ArrivalParkingBlock | null> {
   const building = await buildingService.findBuildingForCourseBuilding(course.building);
   if (!building) return null;
 
-  const parking = await parkingLotService.recommendBestParking({
-    buildingId: building.id,
-    stateMode,
-    parkingEligibility,
-  });
+  let arriveGuess = new Date(startsAt.getTime() - 45 * 60 * 1000);
+  let parking: Awaited<ReturnType<typeof parkingLotService.recommendBestParking>> = null;
+  let spotIdToStatus: Map<string, "occupied" | "empty"> = new Map();
+  let spotRows: { id: string; parkingLotId: string }[] = [];
+
+  for (let iter = 0; iter < 4; iter++) {
+    const { dateYmd, timeHHmm } = occupancyScenarioFromArriveBy(arriveGuess);
+    const preview = await parkingOccupancyAssign.previewScenarioAssignmentAt(dateYmd, timeHHmm);
+    spotIdToStatus = preview.spotIdToStatus;
+    spotRows = preview.spotRows;
+
+    parking = await parkingLotService.recommendBestParking({
+      buildingId: building.id,
+      stateMode: "predicted",
+      parkingEligibility,
+      predictedSpotStatusByLotId: preview.predictedSpotStatusByLotId,
+    });
+    if (!parking) return null;
+
+    const walkMinutesFromLotToBuilding = Math.max(1, Math.ceil(parking.distanceMeters / walkMpm));
+    const inferredFloor = inferFloorFromRoom(course.room);
+    const inBuildingNavigationMinutes = inferredFloor * minPerFloor;
+    const occupancyPercent = lotPredictedOccupancyPercent(
+      parking.lot.id,
+      spotIdToStatus,
+      spotRows
+    );
+    const lotCongestionBufferMinutes = Math.min(
+      15,
+      Math.round(occupancyPercent * CONGESTION_OCCUPANCY_SCALE)
+    );
+
+    const totalTravelMinutes =
+      walkMinutesFromLotToBuilding +
+      inBuildingNavigationMinutes +
+      lotCongestionBufferMinutes +
+      prepBuffer;
+
+    const recommendedArriveBy = new Date(startsAt.getTime() - totalTravelMinutes * 60 * 1000);
+    if (Math.abs(recommendedArriveBy.getTime() - arriveGuess.getTime()) < 90_000) {
+      return {
+        building: {
+          id: building.id,
+          name: building.name,
+          code: building.code,
+        },
+        parking: {
+          lot: parking.lot,
+          spot: parking.spot,
+          distanceMeters: parking.distanceMeters,
+          freeSpotsInSelectedLot: parking.freeSpotsInSelectedLot,
+          occupancyPercent,
+        },
+        timing: {
+          walkMinutesFromLotToBuilding,
+          inBuildingNavigationMinutes,
+          lotCongestionBufferMinutes,
+          prepBufferMinutes: prepBuffer,
+          totalTravelMinutes,
+          recommendedArriveBy: recommendedArriveBy.toISOString(),
+        },
+        occupancyScenario: occupancyScenarioFromArriveBy(recommendedArriveBy),
+      };
+    }
+    arriveGuess = recommendedArriveBy;
+  }
+
   if (!parking) return null;
-
-  const ranked = await parkingLotService.findRecommendationsByBuilding(building.id);
-  const lotMeta = ranked.find((r) => r.lot.id === parking.lot.id);
-  const occupancyPercent = lotMeta?.occupancyPercent ?? 0;
-
   const walkMinutesFromLotToBuilding = Math.max(1, Math.ceil(parking.distanceMeters / walkMpm));
   const inferredFloor = inferFloorFromRoom(course.room);
   const inBuildingNavigationMinutes = inferredFloor * minPerFloor;
-  const lotCongestionBufferMinutes = Math.min(
-    15,
-    Math.round(occupancyPercent * CONGESTION_OCCUPANCY_SCALE)
-  );
-
+  const occupancyPercent = lotPredictedOccupancyPercent(parking.lot.id, spotIdToStatus, spotRows);
+  const lotCongestionBufferMinutes = Math.min(15, Math.round(occupancyPercent * CONGESTION_OCCUPANCY_SCALE));
   const totalTravelMinutes =
-    walkMinutesFromLotToBuilding +
-    inBuildingNavigationMinutes +
-    lotCongestionBufferMinutes +
-    prepBuffer;
-
+    walkMinutesFromLotToBuilding + inBuildingNavigationMinutes + lotCongestionBufferMinutes + prepBuffer;
   const recommendedArriveBy = new Date(startsAt.getTime() - totalTravelMinutes * 60 * 1000);
 
   return {
@@ -356,7 +402,7 @@ export async function getArrivalRecommendationForUser(
   };
 
   const includedTermCodes = getArrivalPlanTermCodes();
-  const allowedTermCodesNormalized = new Set(includedTermCodes.map(normalizeTermCode));
+  const allowedTermCodesNormalized = new Set(includedTermCodes.map(normalizeArrivalTermCode));
 
   const schedules = await classScheduleService.findAll({ studentId: student.id }, ["course"]);
   const classesOnDay = findAllClassesOnSelectedDay(schedules, selectedDayStart, allowedTermCodesNormalized);

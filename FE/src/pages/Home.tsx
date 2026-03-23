@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, Outlet, useOutletContext } from "react-router-dom";
 import type { NavigateFunction } from "react-router-dom";
 import { api } from "../api/client";
@@ -44,10 +44,22 @@ export type HomeOutletContextValue = {
   setLotSort: (v: LotSortOption) => void;
   navigate: NavigateFunction;
   /**
-   * Day parking plan: switch map to Pick time, set simulator to scenario + paused, apply snapshot.
+   * Day parking plan: switch map to Pick time, set simulator to scenario + paused, apply snapshot (deterministic).
    */
   applyPlanPausedScenario: (dateYmd: string, timeHHmm: string) => Promise<void>;
+  /** Same as above but no-op if this scenario is already applied (avoids redundant apply on navigation). */
+  applyPlanScenarioIfChanged: (dateYmd: string, timeHHmm: string) => Promise<void>;
+  /** Shows map spinner + message while fetching the day plan and applying its scenario. */
+  setDayPlanMapLoading: (loading: boolean) => void;
+  /** Scroll the campus map into view (e.g. after clicking a plan step so loading is visible). */
+  scrollCampusMapIntoView: () => void;
 };
+
+const DAY_PLAN_CACHE_PREFIX = "dt_day_plan_v1";
+
+function dayPlanCacheKey(token: string, planDateYmd: string): string {
+  return `${DAY_PLAN_CACHE_PREFIX}:${token.slice(0, 16)}:${planDateYmd}`;
+}
 
 const HOME_LOT_CARD_CLASS =
   "w-full text-left rounded border border-slate-200 bg-white py-2 px-3 flex flex-row flex-wrap items-center justify-between gap-x-3 gap-y-0.5 transition-all duration-200 hover:scale-[1.02] hover:bg-unb-red/5 hover:border-unb-red/50 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-unb-red focus-visible:ring-offset-1 cursor-pointer";
@@ -66,57 +78,101 @@ function DayParkingPlanCard(props: {
   token: string | null;
   planDate: string;
   onPlanDateChange: (v: string) => void;
-  applyPlanPausedScenario: (dateYmd: string, timeHHmm: string) => Promise<void>;
+  applyPlanScenarioIfChanged: (dateYmd: string, timeHHmm: string) => Promise<void>;
+  setDayPlanMapLoading: (loading: boolean) => void;
+  scrollCampusMapIntoView: () => void;
   navigate: NavigateFunction;
 }) {
-  const { token, planDate, onPlanDateChange, applyPlanPausedScenario, navigate } = props;
+  const {
+    token,
+    planDate,
+    onPlanDateChange,
+    applyPlanScenarioIfChanged,
+    setDayPlanMapLoading,
+    scrollCampusMapIntoView,
+    navigate,
+  } = props;
   const [plan, setPlan] = useState<DayArrivalPlanResponse | null>(null);
   const [planLoading, setPlanLoading] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
+  const applyIfChangedRef = useRef(applyPlanScenarioIfChanged);
+  applyIfChangedRef.current = applyPlanScenarioIfChanged;
 
-  const loadPlan = useCallback(() => {
-    if (!token) {
-      setPlan(null);
-      setPlanError(null);
-      setPlanLoading(false);
-      return;
-    }
-    if (!planDate.trim()) {
-      setPlan(null);
-      setPlanError(null);
-      setPlanLoading(false);
-      return;
-    }
-    setPlanLoading(true);
-    setPlanError(null);
-    const q = new URLSearchParams({ date: planDate });
-    api
-      .get<DayArrivalPlanResponse>(`/api/users/me/arrival-recommendation?${q}`, token)
-      .then(setPlan)
-      .catch((e: Error) => {
+  const loadPlan = useCallback(
+    (opts?: { force?: boolean }) => {
+      if (!token) {
         setPlan(null);
-        setPlanError(e.message ?? "Could not load plan");
-      })
-      .finally(() => setPlanLoading(false));
-  }, [token, planDate]);
+        setPlanError(null);
+        setPlanLoading(false);
+        setDayPlanMapLoading(false);
+        return;
+      }
+      if (!planDate.trim()) {
+        setPlan(null);
+        setPlanError(null);
+        setPlanLoading(false);
+        setDayPlanMapLoading(false);
+        return;
+      }
+
+      if (!opts?.force && typeof sessionStorage !== "undefined") {
+        try {
+          const raw = sessionStorage.getItem(dayPlanCacheKey(token, planDate));
+          if (raw) {
+            const data = JSON.parse(raw) as DayArrivalPlanResponse;
+            if (data.selectedDate === planDate) {
+              setPlan(data);
+              setPlanError(null);
+              setPlanLoading(false);
+              setDayPlanMapLoading(false);
+              return;
+            }
+          }
+        } catch {
+          /* fetch fresh */
+        }
+      }
+
+      setPlanLoading(true);
+      setPlanError(null);
+      setDayPlanMapLoading(true);
+      const q = new URLSearchParams({ date: planDate });
+      void (async () => {
+        try {
+          const data = await api.get<DayArrivalPlanResponse>(`/api/users/me/arrival-recommendation?${q}`, token);
+          try {
+            sessionStorage.setItem(dayPlanCacheKey(token, planDate), JSON.stringify(data));
+          } catch {
+            /* quota / private mode */
+          }
+          const initial = data.segments.find((s) => s.type === "initial_arrival");
+          if (initial && initial.type === "initial_arrival") {
+            const { dateYmd, timeHHmm } = initial.occupancyScenario;
+            if (dateYmd?.trim() && timeHHmm?.trim()) {
+              await applyIfChangedRef.current(dateYmd, timeHHmm);
+            }
+          }
+          setPlan(data);
+        } catch (e: unknown) {
+          setPlan(null);
+          setPlanError(e instanceof Error ? e.message : "Could not load plan");
+        } finally {
+          setPlanLoading(false);
+          setDayPlanMapLoading(false);
+        }
+      })();
+    },
+    [token, planDate, setDayPlanMapLoading]
+  );
 
   useEffect(() => {
     loadPlan();
   }, [loadPlan]);
 
-  /** When the plan loads, pre-apply the initial-arrival snapshot (paused scenario) for the campus map. */
-  useEffect(() => {
-    if (!plan || planLoading || planError || !token) return;
-    const initial = plan.segments.find((s) => s.type === "initial_arrival");
-    if (!initial || initial.type !== "initial_arrival") return;
-    const { dateYmd, timeHHmm } = initial.occupancyScenario;
-    if (!dateYmd?.trim() || !timeHHmm?.trim()) return;
-    void applyPlanPausedScenario(dateYmd, timeHHmm);
-  }, [plan, planLoading, planError, token, applyPlanPausedScenario]);
-
   const openParkingStep = (href: string, os: { dateYmd: string; timeHHmm: string }) => {
+    scrollCampusMapIntoView();
     void (async () => {
-      await applyPlanPausedScenario(os.dateYmd, os.timeHHmm);
+      await applyPlanScenarioIfChanged(os.dateYmd, os.timeHHmm);
       navigate(href);
     })();
   };
@@ -231,10 +287,9 @@ function DayParkingPlanCard(props: {
             Your day parking plan
           </h2>
           <p className="text-sm text-slate-500 mt-1 max-w-2xl">
-            Pick a date to load your plan; the campus map switches to a <strong>paused scenario</strong> for your
-            initial arrival time. Clicking <strong>initial arrival</strong> or <strong>return &amp; park</strong>{" "}
-            reloads the matching scenario snapshot, then opens the lot heat map with the suggested stall highlighted.{" "}
-            <strong>Between classes</strong> / stay-on-campus blocks are informational only. Long
+            Pick a date to load your plan. Only <strong>initial arrival</strong> and{" "}
+            <strong>return &amp; park</strong> steps are clickable (they open the lot heat map with the suggested
+            stall highlighted). <strong>Between classes</strong> / stay-on-campus blocks are informational only. Long
             gaps (&gt; 60 min, or the threshold shown below once loaded) assume you left campus and need to park
             again.
           </p>
@@ -252,7 +307,7 @@ function DayParkingPlanCard(props: {
             </label>
             <button
               type="button"
-              onClick={loadPlan}
+              onClick={() => loadPlan({ force: true })}
               disabled={planLoading || !planDate.trim()}
               className="rounded bg-unb-red text-white text-sm font-medium px-3 py-1.5 hover:opacity-90 disabled:opacity-50"
             >
@@ -311,7 +366,9 @@ export function HomeIndexContent() {
     lotSort,
     setLotSort,
     navigate,
-    applyPlanPausedScenario,
+    applyPlanScenarioIfChanged,
+    setDayPlanMapLoading,
+    scrollCampusMapIntoView,
   } = useOutletContext<HomeOutletContextValue>();
 
   const half = Math.ceil(sortedByLot.length / 2);
@@ -324,7 +381,9 @@ export function HomeIndexContent() {
         token={token}
         planDate={planDate}
         onPlanDateChange={setPlanDate}
-        applyPlanPausedScenario={applyPlanPausedScenario}
+        applyPlanScenarioIfChanged={applyPlanScenarioIfChanged}
+        setDayPlanMapLoading={setDayPlanMapLoading}
+        scrollCampusMapIntoView={scrollCampusMapIntoView}
         navigate={navigate}
       />
 

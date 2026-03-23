@@ -115,6 +115,12 @@ export function CampusShell() {
   const [scenarioApplying, setScenarioApplying] = useState(false);
   const [nowcastingLiveApply, setNowcastingLiveApply] = useState(false);
   const [scenarioApplyError, setScenarioApplyError] = useState<string | null>(null);
+  const [dayPlanMapLoading, setDayPlanMapLoading] = useState(false);
+  const campusMapSectionRef = useRef<HTMLElement | null>(null);
+  const scrollCampusMapIntoView = useCallback(() => {
+    campusMapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
   const applyDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** When set to `scenarioKey(...)`, the debounced apply effect skips once (plan-driven apply already ran). */
   const programmaticScenarioSkipDebounceRef = useRef<string | null>(null);
@@ -174,24 +180,31 @@ export function CampusShell() {
     }
   }, [simPaused]);
 
-  const performScenarioApply = useCallback(async (date: string, time: string) => {
-    setScenarioApplying(true);
-    setScenarioApplyError(null);
-    try {
-      await api.post("/api/parking-spots/apply-scenario", { date, time });
-      const spotsData = await api.get<ParkingSpot[]>("/api/parking-spots");
-      setSpots(spotsData);
-      const s = await api.get<SimulatorState>("/api/simulator");
-      setSimPaused(s.paused);
-      setSimMapMode(s.mapMode);
-      setScenarioSyncedKey(scenarioKey(date, time));
-    } catch (e) {
-      setScenarioSyncedKey(null);
-      setScenarioApplyError(e instanceof Error ? e.message : "apply-scenario failed");
-    } finally {
-      setScenarioApplying(false);
-    }
-  }, []);
+  const performScenarioApply = useCallback(
+    async (date: string, time: string, opts?: { deterministic?: boolean }) => {
+      setScenarioApplying(true);
+      setScenarioApplyError(null);
+      try {
+        await api.post("/api/parking-spots/apply-scenario", {
+          date,
+          time,
+          ...(opts?.deterministic ? { deterministic: true } : {}),
+        });
+        const spotsData = await api.get<ParkingSpot[]>("/api/parking-spots");
+        setSpots(spotsData);
+        const s = await api.get<SimulatorState>("/api/simulator");
+        setSimPaused(s.paused);
+        setSimMapMode(s.mapMode);
+        setScenarioSyncedKey(scenarioKey(date, time));
+      } catch (e) {
+        setScenarioSyncedKey(null);
+        setScenarioApplyError(e instanceof Error ? e.message : "apply-scenario failed");
+      } finally {
+        setScenarioApplying(false);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     if (mapDataMode !== "pick-time") return;
@@ -232,9 +245,19 @@ export function CampusShell() {
       }
       const key = scenarioKey(dateYmd, timeHHmm);
       programmaticScenarioSkipDebounceRef.current = key;
-      await performScenarioApply(dateYmd, timeHHmm);
+      await performScenarioApply(dateYmd, timeHHmm, { deterministic: true });
     },
     [performScenarioApply]
+  );
+
+  /** Skip network if the campus map is already on this paused scenario (day-plan links / reload). */
+  const applyPlanScenarioIfChanged = useCallback(
+    async (dateYmd: string, timeHHmm: string) => {
+      const key = scenarioKey(dateYmd, timeHHmm);
+      if (mapDataMode === "pick-time" && scenarioSyncedKey === key) return;
+      await applyPlanPausedScenario(dateYmd, timeHHmm);
+    },
+    [mapDataMode, scenarioSyncedKey, applyPlanPausedScenario]
   );
 
   useEffect(() => {
@@ -373,8 +396,21 @@ export function CampusShell() {
       setLotSort,
       navigate,
       applyPlanPausedScenario,
+      applyPlanScenarioIfChanged,
+      setDayPlanMapLoading,
+      scrollCampusMapIntoView,
     }),
-    [token, planDate, sortedByLot, lotSort, navigate, applyPlanPausedScenario]
+    [
+      token,
+      planDate,
+      sortedByLot,
+      lotSort,
+      navigate,
+      applyPlanPausedScenario,
+      applyPlanScenarioIfChanged,
+      setDayPlanMapLoading,
+      scrollCampusMapIntoView,
+    ]
   );
 
   if (onHomeIndex && loading) {
@@ -451,7 +487,13 @@ export function CampusShell() {
     : "fixed -left-[10000px] top-0 z-0 w-[min(72rem,calc(100vw-3rem))] space-y-8 pointer-events-none";
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-10 space-y-8">
+    <div
+      className={
+        onHomeIndex
+          ? "max-w-6xl mx-auto px-6 py-10 space-y-8"
+          : "max-w-6xl mx-auto px-6 pt-4 pb-10"
+      }
+    >
       <div className={mapShellClass} aria-hidden={onHomeIndex ? undefined : true}>
         <header className="space-y-3">
           <div className="flex items-center gap-3">
@@ -465,7 +507,7 @@ export function CampusShell() {
           </p>
         </header>
 
-        <section>
+        <section ref={campusMapSectionRef} id="campus-map-section" className="scroll-mt-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
             <h2 className="text-lg font-semibold">Campus map (Google Earth Engine API)</h2>
             <div className="flex flex-wrap items-center gap-2">
@@ -545,7 +587,8 @@ export function CampusShell() {
             mapDataMode={mapDataMode}
             scenarioDate={mapScenarioDate}
             scenarioTimeHHmm={mapScenarioTimeHHmm}
-            scenarioLoading={scenarioApplying}
+            scenarioLoading={scenarioApplying || dayPlanMapLoading}
+            scenarioLoadingMessage={dayPlanMapLoading ? "Building your plan…" : undefined}
             nowcastingLiveApply={nowcastingLiveApply}
             scenarioPlay={
               showScenarioPlayControl

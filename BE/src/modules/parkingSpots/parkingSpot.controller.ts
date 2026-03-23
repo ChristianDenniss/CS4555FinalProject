@@ -42,8 +42,12 @@ export async function applyScenario(req: Request, res: Response) {
   if (!DATE_RE.test(date) || !TIME_RE.test(time)) {
     return res.status(400).json({ error: "Body must include date (YYYY-MM-DD) and time (HH:mm)" });
   }
+  const deterministic =
+    req.body?.deterministic === true || req.body?.deterministic === "true" || req.body?.deterministic === 1;
   try {
-    const result = await parkingOccupancyAssign.applyScenarioOccupancy(date, time);
+    const result = await parkingOccupancyAssign.applyScenarioOccupancy(date, time, {
+      mode: deterministic ? "deterministic" : "stochastic",
+    });
     onScenarioApplied(date, time);
     res.json(result);
   } catch (e) {

@@ -105,7 +105,7 @@ export function LotDetail() {
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="max-w-4xl mx-auto px-6 pt-2 pb-8">
         <div className="skeleton h-8 w-48 mb-4" />
         <div className="skeleton h-64 w-full" />
       </div>
@@ -120,7 +120,7 @@ export function LotDetail() {
   }
   if (!lot) {
     return (
-      <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="max-w-4xl mx-auto px-6 pt-2 pb-8">
         Lot not found.
       </div>
     );
@@ -130,8 +130,8 @@ export function LotDetail() {
   const spotsForList = section ? spots.filter((s) => s.section === section) : spots;
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8">
-      <p className="mb-4">
+    <div className="max-w-4xl mx-auto px-6 pt-2 pb-8">
+      <p className="mb-3">
         <Link to="/" className="text-unb-red">
           ← Back to campus map
         </Link>

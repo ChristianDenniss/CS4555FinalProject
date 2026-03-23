@@ -3,9 +3,12 @@ info:
   title: UNB Parking Digital Twin API
   description: >
     Backend API for the UNB Saint John campus parking lot digital twin (MVP).
-    Includes user profiles (role, resident, accessible parking), JWT auth, class schedule,
-    lot-building distances, and parking recommendation.
-  version: 0.2.0
+    Includes JWT auth, user profiles (role, resident, accessible parking), class schedule,
+    lot-building distances, parking recommendations, full-day arrival plans with per-segment
+    scenario clocks for the map, Moncton-time occupancy snapshots (apply-scenario / apply-live),
+    simulator play/pause and live vs scenario map mode, Earth Engine map tiles and campus section GeoJSON,
+    and optional Redis-backed response caching (health endpoint).
+  version: 0.3.0
 
 servers:
   - url: http://localhost:3000
@@ -13,7 +16,9 @@ servers:
 
 tags:
   - name: Health
-    description: Service and cache health checks.
+    description: Service liveness.
+  - name: Cache
+    description: Optional Redis cache status (when REDIS_URL is set).
   - name: Earth Engine
     description: Google Earth Engine imagery and map tiles.
   - name: Parking lots
@@ -37,7 +42,9 @@ tags:
   - name: Auth
     description: Registration and login (JWT).
   - name: Simulator
-    description: Parking occupancy simulator play/pause and live vs scenario clock.
+    description: >
+      In-process parking simulator flags: paused vs running ticks, and live Moncton clock vs fixed scenario instant.
+      Successful POST /api/parking-spots/apply-scenario updates these flags; apply-live switches back to live.
 
 paths:
   /api/health:
@@ -53,6 +60,29 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Health"
+
+  /api/cache/health:
+    get:
+      tags:
+        - Cache
+      summary: Redis cache connectivity and stats
+      description: >
+        Returns whether the optional Redis client is connected (`healthy`) and basic stats.
+        When `REDIS_URL` is unset, `healthy` is false and caching middleware no-ops.
+      operationId: getCacheHealth
+      responses:
+        "200":
+          description: Health check completed (may report unhealthy Redis)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CacheHealthResponse"
+        "500":
+          description: Error while querying cache layer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CacheHealthErrorResponse"
 
   /api/earth-engine/thumbnail:
     get:
@@ -125,6 +155,30 @@ paths:
           description: Missing asset
         "502":
           description: Earth Engine error
+
+  /api/earth-engine/sections:
+    get:
+      tags:
+        - Earth Engine
+      summary: Parking section polygons (GeoJSON)
+      description: >
+        Returns a GeoJSON FeatureCollection of campus parking section boundaries used on the map
+        for hover labels and click-to-lot navigation. Feature `properties.name` identifies the section.
+      operationId: getEarthEngineSections
+      responses:
+        "200":
+          description: GeoJSON FeatureCollection
+          content:
+            application/json:
+              schema:
+                type: object
+                description: GeoJSON FeatureCollection
+        "502":
+          description: Earth Engine or asset error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
   /api/earth-engine/tiles:
     get:
@@ -403,6 +457,9 @@ paths:
                   type: string
                   description: Local time HH:mm (15-minute profile alignment)
                   example: "11:00"
+                deterministic:
+                  type: boolean
+                  description: When true, fixed snapshot (matches day-parking preview). When false/omitted, stochastic variety for manual Pick time.
       responses:
         "200":
           description: Counts after apply (only spots with a changed status are written; no per-spot log rows)
@@ -427,7 +484,10 @@ paths:
     post:
       tags:
         - Parking spots
-      summary: Bulk-apply occupancy snapshot for Moncton-local current time and switch simulator to live
+      summary: Bulk-apply occupancy for “now” (Moncton) and switch simulator to live
+      description: >
+        Applies occupancy for the current Moncton instant, then sets the simulator to
+        `mapMode: live` and `paused: false` (see GET/POST /api/simulator).
       operationId: applyParkingLive
       responses:
         "200":
@@ -1120,6 +1180,8 @@ paths:
         park for the first class. Between consecutive classes, if the gap from the previous class end to the next
         start is greater than 60 minutes, a return-and-park segment recommends a fresh lot/spot and arrival time for
         the next class (assumes you left campus). Otherwise a stay-on-campus segment is emitted.
+        Each `initial_arrival` and `return_and_park` segment includes `occupancyScenario` (`dateYmd`, `timeHHmm`)
+        aligned to Moncton local time for POST /api/parking-spots/apply-scenario so the map matches that step.
       operationId: getMyArrivalRecommendation
       security:
         - bearerAuth: []
@@ -1269,6 +1331,38 @@ components:
         service:
           type: string
           example: unb-parking-twin-be
+
+    CacheHealthResponse:
+      type: object
+      properties:
+        healthy:
+          type: boolean
+          description: True when Redis is enabled and PING returned PONG
+        stats:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+              description: Whether REDIS_URL was set and client connected
+            redisUrl:
+              type: string
+              nullable: true
+              description: Configured Redis URL (null when disabled)
+        timestamp:
+          type: string
+          format: date-time
+
+    CacheHealthErrorResponse:
+      type: object
+      properties:
+        healthy:
+          type: boolean
+          example: false
+        error:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
 
     Error:
       type: object
@@ -1438,6 +1532,20 @@ components:
           type: string
           format: date-time
 
+    OccupancyScenarioClock:
+      type: object
+      description: Moncton-local date and time for POST /api/parking-spots/apply-scenario (15-minute profile grid)
+      required:
+        - dateYmd
+        - timeHHmm
+      properties:
+        dateYmd:
+          type: string
+          example: "2026-03-19"
+        timeHHmm:
+          type: string
+          example: "08:45"
+
     ArrivalParkingBlock:
       type: object
       properties:
@@ -1520,7 +1628,7 @@ components:
               format: date-time
         - allOf:
             - type: object
-              required: [type, gapAfterPreviousClassMinutes, targetClass, building, parking, timing]
+              required: [type, gapAfterPreviousClassMinutes, targetClass, occupancyScenario]
               properties:
                 type:
                   type: string
@@ -1529,6 +1637,8 @@ components:
                   type: integer
                 targetClass:
                   $ref: "#/components/schemas/ArrivalClassSummary"
+                occupancyScenario:
+                  $ref: "#/components/schemas/OccupancyScenarioClock"
             - $ref: "#/components/schemas/ArrivalParkingBlock"
 
     DayArrivalPlanResponse:
