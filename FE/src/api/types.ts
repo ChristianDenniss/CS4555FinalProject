@@ -31,6 +31,15 @@ export interface LotBuildingDistance {
   building?: Building;
 }
 
+export type SimulatorMapMode = "live" | "scenario";
+
+export interface SimulatorState {
+  paused: boolean;
+  mapMode: SimulatorMapMode;
+  scenarioDate: string | null;
+  scenarioTime: string | null;
+}
+
 export interface ParkingSpot {
   id: string;
   parkingLotId: string;
@@ -142,6 +151,12 @@ export interface ArrivalTimingBreakdown {
   recommendedArriveBy: string;
 }
 
+/** Moncton `apply-scenario` clock for this parking step (matches BE). */
+export interface OccupancyScenarioClock {
+  dateYmd: string;
+  timeHHmm: string;
+}
+
 export type DayArrivalSegment =
   | {
       type: "initial_arrival";
@@ -155,6 +170,7 @@ export type DayArrivalSegment =
         occupancyPercent: number;
       };
       timing: ArrivalTimingBreakdown;
+      occupancyScenario: OccupancyScenarioClock;
     }
   | {
       type: "stay_on_campus";
@@ -177,6 +193,7 @@ export type DayArrivalSegment =
         occupancyPercent: number;
       };
       timing: ArrivalTimingBreakdown;
+      occupancyScenario: OccupancyScenarioClock;
     };
 
 export interface DayArrivalPlanResponse {

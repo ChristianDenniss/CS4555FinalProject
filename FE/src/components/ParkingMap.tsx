@@ -14,8 +14,17 @@ const DEFAULT_ZOOM = 17;
 /** Bounds: tighter north-south (less vertical scroll), same horizontal. */
 const MAX_BOUNDS: [[number, number], [number, number]] = [
   [45.303, -66.092], // southwest
-  [45.31, -66.079],  // northeast
+  [45.31, -66.079], // northeast
 ];
+
+export type ParkingMapDataMode = "live" | "pick-time";
+
+export type ScenarioPlayControl = {
+  show: boolean;
+  paused: boolean;
+  disabled?: boolean;
+  onToggle: () => void;
+};
 
 interface ParkingMapProps {
   /** Tile URL template from /api/earth-engine/tiles (e.g. /api/earth-engine/tiles/{z}/{x}/{y}?asset=unbsj) */
@@ -26,6 +35,20 @@ interface ParkingMapProps {
   lots?: ParkingLot[];
   /** Called when a section polygon is clicked; pass lot id to navigate */
   onSectionClick?: (lotId: string) => void;
+  /** Live = current data; pick-time = scenario (time + day on parent). */
+  mapDataMode?: ParkingMapDataMode;
+  /** ISO `YYYY-MM-DD` for the scenario day when `mapDataMode` is `pick-time`. */
+  scenarioDate?: string;
+  /** Local `HH:mm` scenario clock time when `mapDataMode` is `pick-time`. */
+  scenarioTimeHHmm?: string;
+  /** PLAY / PAUSE when pick-time scenario is applied (same chrome as LIVE). */
+  scenarioPlay?: ScenarioPlayControl | null;
+  /** Centered spinner while apply-scenario / apply-live runs */
+  scenarioLoading?: boolean;
+  /** When set and `scenarioLoading` is true, overrides the default loading line (e.g. day parking plan). */
+  scenarioLoadingMessage?: string;
+  /** Live tab after leaving Pick time: show “Nowcasting Scenario…” while apply-live runs */
+  nowcastingLiveApply?: boolean;
   /** Optional overlay (e.g. stats card) rendered on top of the map */
   children?: ReactNode;
   className?: string;
@@ -39,20 +62,96 @@ const sectionsStyle: PathOptions = {
   weight: 0,
 };
 
+function formatScenarioDateLabel(isoDate: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return "—";
+  const d = new Date(`${isoDate}T12:00:00`);
+  return d.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatScenarioTimeLabel(hhmm: string): string {
+  const parts = hhmm.split(":");
+  const h = Number(parts[0]);
+  const m = Number(parts[1]);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return "—";
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  return d.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function hasScenarioPicked(date: string, time: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(date.trim()) && /^\d{1,2}:\d{2}$/.test(time.trim());
+}
+
+/** Calendar compare in the user’s local timezone (scenario `YYYY-MM-DD` vs today). */
+function scenarioDateVsToday(ymd: string): "future" | "past" | "today" | "invalid" {
+  const s = ymd.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return "invalid";
+  const [ys, ms, ds] = s.split("-");
+  const y = Number(ys);
+  const m = Number(ms);
+  const d = Number(ds);
+  if (![y, m, d].every((n) => Number.isFinite(n))) return "invalid";
+  const now = new Date();
+  const ty = now.getFullYear();
+  const tm = now.getMonth() + 1;
+  const td = now.getDate();
+  if (y > ty || (y === ty && m > tm) || (y === ty && m === tm && d > td)) return "future";
+  if (y < ty || (y === ty && m < tm) || (y === ty && m === tm && d < td)) return "past";
+  return "today";
+}
+
+function mapLoadingCopy(
+  mapDataMode: ParkingMapDataMode,
+  scenarioDate: string,
+  nowcastingLiveApply: boolean
+): { text: string; aria: string } {
+  if (nowcastingLiveApply) {
+    return { text: "Nowcasting Scenario…", aria: "Nowcasting scenario" };
+  }
+  if (mapDataMode === "live") {
+    return { text: "Updating map…", aria: "Updating map" };
+  }
+  const rel = scenarioDateVsToday(scenarioDate);
+  if (rel === "future") return { text: "Forecasting Scenario…", aria: "Forecasting scenario" };
+  if (rel === "past") return { text: "Hindcasting Scenario…", aria: "Hindcasting scenario" };
+  return { text: "Updating map…", aria: "Updating map" };
+}
+
+const liveBadgeClass =
+  "flex items-center justify-center gap-1.5 rounded-md bg-unb-red px-2.5 py-1 shadow-lg min-w-[4.5rem]";
+
 export function ParkingMap({
   earthEngineTileUrl,
   sectionsGeoJSON,
   lots = [],
   onSectionClick,
+  mapDataMode = "live",
+  scenarioDate = "",
+  scenarioTimeHHmm = "",
+  scenarioPlay = null,
+  scenarioLoading = false,
+  scenarioLoadingMessage,
+  nowcastingLiveApply = false,
   children,
   className = "",
 }: ParkingMapProps) {
+  const defaultCopy = mapLoadingCopy(mapDataMode, scenarioDate, nowcastingLiveApply);
+  const loadingCopy =
+    scenarioLoading && scenarioLoadingMessage?.trim()
+      ? { text: scenarioLoadingMessage.trim(), aria: scenarioLoadingMessage.trim() }
+      : defaultCopy;
+
   const onEachSection = useCallback(
     (feature: GeoJsonObject, layer: Layer) => {
       const props = (feature as Feature).properties as Record<string, unknown> | undefined;
       const featureName = (props?.name as string) ?? "Section";
-      // 1) Try strict match (including number) between section name and lot name.
-      // 2) As a fallback, only special-case PHDParking → PHDParking1 so we don't collapse other lots.
       const normalize = (name: string) => name.replace(/\s+/g, "").toLowerCase();
       const normFeature = normalize(featureName);
       let lot =
@@ -60,8 +159,6 @@ export function ParkingMap({
         (normFeature === "phdparking"
           ? lots.find((l) => normalize(l.name).startsWith("phdparking1"))
           : undefined);
-      // Prettify the label a bit (e.g. "StaffParking1" -> "Staff Parking 1") but keep
-      // the original featureName (from GEE / backend) so numbering stays distinct.
       const prettify = (name: string) =>
         name
           .replace(/([a-z])([A-Z])/g, "$1 $2")
@@ -81,7 +178,7 @@ export function ParkingMap({
   );
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative overflow-hidden rounded-lg ${className}`}>
       <MapContainer
         center={CENTER}
         zoom={DEFAULT_ZOOM}
@@ -115,6 +212,82 @@ export function ParkingMap({
           />
         )}
       </MapContainer>
+      {mapDataMode === "live" ? (
+        <div
+          className={`pointer-events-none absolute top-3 right-3 z-[1000] ${liveBadgeClass}`}
+          role="status"
+          aria-label="Live updating data"
+        >
+          <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-50" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+          </span>
+          <span className="text-[10px] font-extrabold tracking-[0.2em] text-white drop-shadow-sm">
+            LIVE
+          </span>
+        </div>
+      ) : (
+        <div className="absolute top-3 right-3 z-[1000] flex flex-col items-end gap-1.5">
+          {scenarioPlay?.show ? (
+            <button
+              type="button"
+              disabled={scenarioPlay.disabled}
+              onClick={scenarioPlay.onToggle}
+              className={`${liveBadgeClass} pointer-events-auto text-[10px] font-extrabold tracking-[0.15em] text-white drop-shadow-sm transition-opacity hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed`}
+              aria-label={scenarioPlay.paused ? "Play scenario simulation" : "Pause scenario simulation"}
+            >
+              {!scenarioPlay.paused ? (
+                <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-50" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+                </span>
+              ) : null}
+              {scenarioPlay.paused ? "PLAY" : "PAUSE"}
+            </button>
+          ) : null}
+          <div
+            className="pointer-events-none max-w-[min(100%,9.5rem)] rounded-md bg-unb-red px-2 py-1 text-center shadow-lg"
+            role="status"
+            aria-label={
+              hasScenarioPicked(scenarioDate, scenarioTimeHHmm)
+                ? `Scenario ${formatScenarioTimeLabel(scenarioTimeHHmm)} on ${formatScenarioDateLabel(scenarioDate)}`
+                : "Pick a date and time for the scenario"
+            }
+          >
+            <p className="text-[8px] font-semibold uppercase tracking-wider text-white/90">Plan time (AST)</p>
+            {hasScenarioPicked(scenarioDate, scenarioTimeHHmm) ? (
+              <>
+                <p className="text-sm font-extrabold tabular-nums leading-tight text-white drop-shadow-sm">
+                  {formatScenarioTimeLabel(scenarioTimeHHmm)}
+                </p>
+                <p className="text-[9px] font-medium leading-tight text-white/85">
+                  {formatScenarioDateLabel(scenarioDate)}
+                </p>
+              </>
+            ) : (
+              <p className="text-[10px] font-semibold leading-snug text-white/95 px-0.5 py-0.5">
+                Select date &amp; time
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+      {scenarioLoading ? (
+        <div
+          className="absolute inset-0 z-[2000] flex items-center justify-center rounded-lg bg-slate-900/35 backdrop-blur-[2px]"
+          role="status"
+          aria-busy="true"
+          aria-label={loadingCopy.aria}
+        >
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-slate-200 bg-white px-8 py-6 shadow-xl">
+            <span
+              className="h-11 w-11 shrink-0 animate-spin rounded-full border-[3px] border-unb-red border-t-transparent"
+              aria-hidden
+            />
+            <p className="text-sm font-medium text-slate-700">{loadingCopy.text}</p>
+          </div>
+        </div>
+      ) : null}
       {children && (
         <div className="absolute bottom-4 left-4 right-4 md:left-4 md:right-auto md:max-w-sm z-[1000]">
           {children}
