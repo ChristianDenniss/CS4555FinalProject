@@ -24,6 +24,7 @@ const PORT = process.env.PORT || 3000;
 const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS ?? "")
   .split(",")
   .map((s) => s.trim())
+  .map((s) => s.replace(/\/+$/, ""))
   .filter(Boolean);
 
 async function main() {
@@ -34,7 +35,15 @@ async function main() {
   const app = express();
   app.use(
     cors({
-      origin: allowedOrigins.length > 0 ? allowedOrigins : true,
+      origin:
+        allowedOrigins.length > 0
+          ? (origin, callback) => {
+              if (!origin) return callback(null, true);
+              const normalized = origin.replace(/\/+$/, "");
+              if (allowedOrigins.includes(normalized)) return callback(null, true);
+              return callback(new Error(`CORS blocked for origin: ${origin}`));
+            }
+          : true,
       credentials: true,
     })
   );

@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_API_URL ?? "";
+const BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
 
 /** Thrown on non-OK responses so callers can handle 401 (expired token) vs other errors. */
 export class ApiError extends Error {
