@@ -140,16 +140,6 @@ export function CampusShell() {
     }
   }, [mapDataMode, mapScenarioDate, mapScenarioTimeHHmm, scenarioSyncedKey]);
 
-  useEffect(() => {
-    api
-      .get<SimulatorState>("/api/simulator")
-      .then((s) => {
-        setSimPaused(s.paused);
-        setSimMapMode(s.mapMode);
-      })
-      .catch(() => {});
-  }, []);
-
   const activateLiveMap = useCallback(async () => {
     const wasPickTime = mapDataMode === "pick-time";
     setMapDataMode("live");
@@ -303,17 +293,44 @@ export function CampusShell() {
   }, []);
 
   useEffect(() => {
-    Promise.all([
-      api.get<ParkingLot[]>("/api/parking-lots"),
-      api.get<ParkingSpot[]>("/api/parking-spots"),
-    ])
-      .then(([lotsData, spotsData]) => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        // UI can restore "Live" from session while the server still holds a scenario
+        // snapshot; match activateLiveMap by syncing live occupancy before first fetch.
+        if (persistedMap.mapDataMode === "live") {
+          try {
+            await api.post("/api/parking-spots/apply-live", {});
+          } catch (e) {
+            if (!cancelled) {
+              setScenarioApplyError(
+                e instanceof Error ? e.message : "Could not sync live occupancy on load"
+              );
+            }
+          }
+        }
+        if (cancelled) return;
+        const [lotsData, spotsData, simState] = await Promise.all([
+          api.get<ParkingLot[]>("/api/parking-lots"),
+          api.get<ParkingSpot[]>("/api/parking-spots"),
+          api.get<SimulatorState>("/api/simulator"),
+        ]);
+        if (cancelled) return;
         setLots(lotsData);
         setSpots(spotsData);
-      })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, []);
+        setSimPaused(simState.paused);
+        setSimMapMode(simState.mapMode);
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [persistedMap.mapDataMode]);
 
   useEffect(() => {
     api
