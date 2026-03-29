@@ -10,7 +10,8 @@
     "seed": "ts-node scripts/seed.ts",
     "seed-replace": "ts-node scripts/seed.ts --replace",
     "seed-courses": "ts-node scripts/seed-courses.ts data/scraped-courses.json",
-    "scrape-courses": "ts-node scripts/scrape-courses.ts"
+    "scrape-courses": "ts-node scripts/scrape-courses.ts",
+    "kml-to-edges": "ts-node scripts/kml-to-edges.ts"
   },
   "keywords": [
     "parking",

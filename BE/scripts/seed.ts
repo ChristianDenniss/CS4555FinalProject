@@ -7,6 +7,7 @@ import { ParkingSpot } from "../src/modules/parkingSpots/parkingSpot.entity";
 import { Building } from "../src/modules/buildings/building.entity";
 import { LotBuildingDistance } from "../src/modules/buildings/lotBuildingDistance.entity";
 import * as parkingOccupancyAssign from "../src/modules/parkingSpots/parkingOccupancyAssign.service";
+import type { LotBuildingWalkingEdge } from "./lib/walkingRouteKml";
 
 /** Path to lot SVGs (DTProj/FE/src/images/svgs).
  * Seed reads stall `id="Row-###"` from each file (see parseSpotLayersFromSvg).
@@ -58,6 +59,20 @@ function randomLotImageUrl(): string {
 }
 
 const REPLACE = process.argv.includes("--replace");
+
+/** Optional: `BE/data/lot-building-walking-edges.json` from `kml-to-edges.ts` (meters along Google route polyline). */
+const WALKING_EDGES_PATH = path.join(__dirname, "../data/lot-building-walking-edges.json");
+
+function loadWalkingEdgesMap(): Map<string, number> | null {
+  if (!fs.existsSync(WALKING_EDGES_PATH)) return null;
+  try {
+    const raw = JSON.parse(fs.readFileSync(WALKING_EDGES_PATH, "utf-8")) as LotBuildingWalkingEdge[];
+    if (!Array.isArray(raw)) return null;
+    return new Map(raw.map((e) => [`${e.parkingLotName}|${e.buildingCode}`, e.distanceMeters]));
+  } catch {
+    return null;
+  }
+}
 
 const SEED_SCENARIO_DATE = process.env.SEED_SCENARIO_DATE ?? "2026-03-15";
 const SEED_SCENARIO_TIME = process.env.SEED_SCENARIO_TIME ?? "11:00";
@@ -249,9 +264,19 @@ async function seed() {
     buildings = await buildingRepo.find({ order: { name: "ASC" } });
   }
   if ((await distanceRepo.count()) === 0 && buildings.length > 0) {
+    const walkingEdges = loadWalkingEdgesMap();
+    if (walkingEdges) {
+      console.log(`Using walking distances from ${path.basename(WALKING_EDGES_PATH)} (${walkingEdges.size} edges); others random.`);
+    }
     for (const lot of lots) {
       for (const building of buildings) {
-        const distanceMeters = 50 + Math.floor(Math.random() * 450);
+        const code = building.code ?? building.name;
+        const key = `${lot.name}|${code}`;
+        const fromKml = walkingEdges?.get(key);
+        const distanceMeters =
+          fromKml != null && Number.isFinite(fromKml)
+            ? Math.round(fromKml)
+            : 50 + Math.floor(Math.random() * 450);
         const d = distanceRepo.create({
           parkingLotId: lot.id,
           buildingId: building.id,
