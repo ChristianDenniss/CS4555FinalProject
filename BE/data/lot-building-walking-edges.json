@@ -898,5 +898,65 @@
     "parkingLotName": "GeneralParking4",
     "buildingCode": "Sir Douglas Hazen Hall",
     "distanceMeters": 277
+  },
+  {
+    "parkingLotName": "ResidentParking3",
+    "buildingCode": "Thomas J. Condon Student Centre",
+    "distanceMeters": 82
+  },
+  {
+    "parkingLotName": "ResidentParking3",
+    "buildingCode": "Sir James Dunn Residence",
+    "distanceMeters": 123
+  },
+  {
+    "parkingLotName": "ResidentParking3",
+    "buildingCode": "Colin B. Mackay Residence",
+    "distanceMeters": 139
+  },
+  {
+    "parkingLotName": "ResidentParking3",
+    "buildingCode": "Barry & Flora Beckett Residence",
+    "distanceMeters": 248
+  },
+  {
+    "parkingLotName": "ResidentParking3",
+    "buildingCode": "G. Forbes Elliot Athletics Centre",
+    "distanceMeters": 93
+  },
+  {
+    "parkingLotName": "ResidentParking3",
+    "buildingCode": "Sir Douglas Hazen Hall",
+    "distanceMeters": 212
+  },
+  {
+    "parkingLotName": "ResidentParking3",
+    "buildingCode": "Philip W. Oland Hall",
+    "distanceMeters": 275
+  },
+  {
+    "parkingLotName": "ResidentParking3",
+    "buildingCode": "Ganong Hall",
+    "distanceMeters": 380
+  },
+  {
+    "parkingLotName": "ResidentParking3",
+    "buildingCode": "K.C. Irving Hall",
+    "distanceMeters": 376
+  },
+  {
+    "parkingLotName": "ResidentParking3",
+    "buildingCode": "Hans W. Klohn Commons (library)",
+    "distanceMeters": 462
+  },
+  {
+    "parkingLotName": "ResidentParking3",
+    "buildingCode": "Dalhousie Medicine New Brunswick building",
+    "distanceMeters": 524
+  },
+  {
+    "parkingLotName": "ResidentParking3",
+    "buildingCode": "Canada Games Stadium",
+    "distanceMeters": 443
   }
 ]

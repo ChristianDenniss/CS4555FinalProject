@@ -4222,5 +4222,239 @@
 			</coordinates>
 		</LineString>
 	</Placemark>
+	<Placemark id="002C58D5433E6D951D31">
+		<name>ResidentParking3 to Condon</name>
+		<LookAt>
+			<longitude>-66.08586770593099</longitude>
+			<latitude>45.30750735250282</latitude>
+			<altitude>74.00772764649346</altitude>
+			<heading>359.9996270798588</heading>
+			<tilt>0</tilt>
+			<gx:fovy>30.00035527</gx:fovy>
+			<range>509.4734866757062</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_3BAB81C00D3E6D7558CC</styleUrl>
+		<LineString>
+			<coordinates>
+				-66.0859575602363,45.30786817779894,0 -66.08595029567371,45.30713040828228,0 
+			</coordinates>
+		</LineString>
+	</Placemark>
+	<Placemark id="0D125001D13E6D956C98">
+		<name>ResidentParking3 to Dunn</name>
+		<LookAt>
+			<longitude>-66.08586770599439</longitude>
+			<latitude>45.3075073525624</latitude>
+			<altitude>74.00772764790811</altitude>
+			<heading>359.9996270798588</heading>
+			<tilt>0</tilt>
+			<gx:fovy>30.00035527</gx:fovy>
+			<range>509.4734866757062</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_0DE59823383E6D7558CC</styleUrl>
+		<LineString>
+			<coordinates>
+				-66.08596115235245,45.3078403675711,0 -66.08595390538612,45.30714548474192,0 -66.0865323113386,45.3071764679022,0 
+			</coordinates>
+		</LineString>
+	</Placemark>
+	<Placemark id="03B40287663E6D959C20">
+		<name>ResidentParking3 to MacKay</name>
+		<LookAt>
+			<longitude>-66.08586770605778</longitude>
+			<latitude>45.30750735262195</latitude>
+			<altitude>74.00772764649346</altitude>
+			<heading>359.9996270798588</heading>
+			<tilt>0</tilt>
+			<gx:fovy>30.00035527</gx:fovy>
+			<range>509.4734866757062</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_3BAB81C00D3E6D7558CC</styleUrl>
+		<LineString>
+			<coordinates>
+				-66.08594680916137,45.30782027653389,0 -66.08593955731098,45.3071630779664,0 -66.08634758069002,45.30768568441332,0 
+			</coordinates>
+		</LineString>
+	</Placemark>
+	<Placemark id="0D66D148193E6D95E7DF">
+		<name>ResidentParking3 to Becket</name>
+		<LookAt>
+			<longitude>-66.08586770612118</longitude>
+			<latitude>45.30750735268152</latitude>
+			<altitude>74.00772764649346</altitude>
+			<heading>359.9996270798588</heading>
+			<tilt>0</tilt>
+			<gx:fovy>30.00035527</gx:fovy>
+			<range>509.4734866757062</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_0DE59823383E6D7558CC</styleUrl>
+		<LineString>
+			<coordinates>
+				-66.0859360253945,45.30782029000378,0 -66.08591797692098,45.3071304086324,0 -66.08626712184244,45.30761652117938,0 -66.08625283294924,45.30777756877099,0 -66.08743200231233,45.30773493341881,0 
+			</coordinates>
+		</LineString>
+	</Placemark>
+	<Placemark id="026BF6C87B3E6D962979">
+		<name>ResidentParking3 to Athletics</name>
+		<LookAt>
+			<longitude>-66.08586770618457</longitude>
+			<latitude>45.30750735274108</latitude>
+			<altitude>74.00772764790811</altitude>
+			<heading>359.9996270769268</heading>
+			<tilt>0</tilt>
+			<gx:fovy>30.00035527</gx:fovy>
+			<range>509.4734866757063</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_0DE59823383E6D7558CC</styleUrl>
+		<LineString>
+			<coordinates>
+				-66.08596831413494,45.30785038902423,0 -66.08593255642855,45.30748138029378,0 -66.08527176012478,45.30750167280081,0 
+			</coordinates>
+		</LineString>
+	</Placemark>
+	<Placemark id="0A8688C2C63E6D9662AF">
+		<name>ResidentParking3 to Hazen</name>
+		<snippet></snippet>
+		<LookAt>
+			<longitude>-66.08586770618457</longitude>
+			<latitude>45.30750735274108</latitude>
+			<altitude>74.00772764790811</altitude>
+			<heading>359.9996270769268</heading>
+			<tilt>0</tilt>
+			<gx:fovy>30.00035527</gx:fovy>
+			<range>509.4734866757063</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_0DE59823383E6D7558CC</styleUrl>
+		<LineString>
+			<coordinates>
+				-66.08596831413494,45.30785038902423,0 -66.08593255642855,45.30748138029378,0 -66.08537857519282,45.30750299555002,0 -66.08529044222958,45.30688059639035,0 -66.08547247463189,45.30638019375271,0 
+			</coordinates>
+		</LineString>
+	</Placemark>
+	<Placemark id="0D567D63863E6D96F313">
+		<name>ResidentParking3 to Oland</name>
+		<snippet></snippet>
+		<LookAt>
+			<longitude>-66.08586770618457</longitude>
+			<latitude>45.30750735274108</latitude>
+			<altitude>74.00772764790811</altitude>
+			<heading>359.9996270769268</heading>
+			<tilt>0</tilt>
+			<gx:fovy>30.00035527</gx:fovy>
+			<range>509.4734866757063</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_0DE59823383E6D7558CC</styleUrl>
+		<LineString>
+			<coordinates>
+				-66.08596831413494,45.30785038902423,0 -66.08593255642855,45.30748138029378,0 -66.08537857519282,45.30750299555002,0 -66.08529044222958,45.30688059639035,0 -66.08550078113562,45.30637608458655,0 -66.08473624186489,45.30620023460465,0 
+			</coordinates>
+		</LineString>
+	</Placemark>
+	<Placemark id="06A658DB173E6D974F1E">
+		<name>ResidentParking3 to Ganong</name>
+		<snippet></snippet>
+		<LookAt>
+			<longitude>-66.08586770618457</longitude>
+			<latitude>45.30750735274108</latitude>
+			<altitude>74.00772764790811</altitude>
+			<heading>359.9996270769268</heading>
+			<tilt>0</tilt>
+			<gx:fovy>30.00035527</gx:fovy>
+			<range>509.4734866757063</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_011834F18B3E6D7558CF</styleUrl>
+		<LineString>
+			<coordinates>
+				-66.08596831413494,45.30785038902423,0 -66.08593255642855,45.30748138029378,0 -66.08537857519282,45.30750299555002,0 -66.08529044222958,45.30688059639035,0 -66.08550078113562,45.30637608458655,0 -66.08476150513236,45.30627288802755,0 -66.08487956410929,45.3061647201324,0 -66.08498678011446,45.30605919299001,0 -66.0849723873295,45.30598645122001,0 -66.08505087704464,45.30555471585809,0 -66.08523980555768,45.30539763242749,0 
+			</coordinates>
+		</LineString>
+	</Placemark>
+	<Placemark id="0728268D553E6D9815EF">
+		<name>ResidentParking3 to Irving</name>
+		<snippet></snippet>
+		<LookAt>
+			<longitude>-66.08586770618457</longitude>
+			<latitude>45.30750735274108</latitude>
+			<altitude>74.00772764790811</altitude>
+			<heading>359.9996270769268</heading>
+			<tilt>0</tilt>
+			<gx:fovy>30.00035527</gx:fovy>
+			<range>509.4734866757063</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_011834F18B3E6D7558CF</styleUrl>
+		<LineString>
+			<coordinates>
+				-66.08596831413494,45.30785038902423,0 -66.08593255642855,45.30748138029378,0 -66.08537857519282,45.30750299555002,0 -66.08529044222958,45.30688059639035,0 -66.08550078113562,45.30637608458655,0 -66.08476150513236,45.30627288802755,0 -66.08487956410929,45.3061647201324,0 -66.08491907658609,45.30606419438909,0 -66.08486545442904,45.30595381376889,0 -66.0847975921441,45.30584839052889,0 -66.08472001560894,45.30553023073661,0 -66.08453153910365,45.30547311445857,0 
+			</coordinates>
+		</LineString>
+	</Placemark>
+	<Placemark id="068D6CD4F43E6D988D99">
+		<name>ResidentParking3 to Commons</name>
+		<snippet></snippet>
+		<LookAt>
+			<longitude>-66.08586770618457</longitude>
+			<latitude>45.30750735274108</latitude>
+			<altitude>74.00772764790811</altitude>
+			<heading>359.9996270769268</heading>
+			<tilt>0</tilt>
+			<gx:fovy>30.00035527</gx:fovy>
+			<range>509.4734866757063</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_011834F18B3E6D7558CF</styleUrl>
+		<LineString>
+			<coordinates>
+				-66.08596831413494,45.30785038902423,0 -66.08593255642855,45.30748138029378,0 -66.08537857519282,45.30750299555002,0 -66.08529044222958,45.30688059639035,0 -66.08550078113562,45.30637608458655,0 -66.08476150513236,45.30627288802755,0 -66.08487956410929,45.3061647201324,0 -66.08491907658609,45.30606419438909,0 -66.08486545442904,45.30595381376889,0 -66.0847975921441,45.30584839052889,0 -66.08472001560894,45.30553023073661,0 -66.08450241017557,45.30541032224157,0 -66.08405599254945,45.30536708346109,0 -66.0839625880177,45.30535688532859,0 -66.08389805634528,45.30530128157778,0 -66.08351939919807,45.30527332015927,0 
+			</coordinates>
+		</LineString>
+	</Placemark>
+	<Placemark id="0CD6A11D473E6D99170E">
+		<name>ResidentParking3 to Dalhousie</name>
+		<snippet></snippet>
+		<LookAt>
+			<longitude>-66.08586770618457</longitude>
+			<latitude>45.30750735274108</latitude>
+			<altitude>74.00772764790811</altitude>
+			<heading>359.9996270769268</heading>
+			<tilt>0</tilt>
+			<gx:fovy>30.00035527</gx:fovy>
+			<range>509.4734866757063</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_011834F18B3E6D7558CF</styleUrl>
+		<LineString>
+			<coordinates>
+				-66.08596831413494,45.30785038902423,0 -66.08593255642855,45.30748138029378,0 -66.08537857519282,45.30750299555002,0 -66.08529044222958,45.30688059639035,0 -66.08550078113562,45.30637608458655,0 -66.08476150513236,45.30627288802755,0 -66.08487956410929,45.3061647201324,0 -66.08491907658609,45.30606419438909,0 -66.08486545442904,45.30595381376889,0 -66.0847975921441,45.30584839052889,0 -66.08472001560894,45.30553023073661,0 -66.08450241017557,45.30541032224157,0 -66.08395198673098,45.305377153971,0 -66.08398168497514,45.30501102078217,0 -66.08430003428698,45.30494635121388,0 -66.08423014607422,45.30465445920171,0 
+			</coordinates>
+		</LineString>
+	</Placemark>
+	<Placemark id="094BBFCE673E6D9AB744">
+		<name>ResidentParking3 to CanadaGames</name>
+		<LookAt>
+			<longitude>-66.0866070889283</longitude>
+			<latitude>45.30515231028242</latitude>
+			<altitude>75.7614055576412</altitude>
+			<heading>359.9995149245935</heading>
+			<tilt>0</tilt>
+			<gx:fovy>30.00035527</gx:fovy>
+			<range>507.7197304425499</range>
+			<altitudeMode>absolute</altitudeMode>
+		</LookAt>
+		<styleUrl>#__managed_style_0DE59823383E6D7558CC</styleUrl>
+		<LineString>
+			<coordinates>
+				-66.0859620269308,45.30783702838364,0 -66.0859088690074,45.30734929952389,0 -66.08573556955635,45.30732139685613,0 -66.08571031572738,45.30722790208243,0 -66.08571273663486,45.30692855600231,0 -66.08571625275795,45.3068480881576,0 -66.08627871300936,45.30677724267935,0 -66.08671308970449,45.30666940889878,0 -66.0867531560247,45.30652974402899,0 -66.08720733547996,45.30637387752201,0 -66.0874443402173,45.3057805110683,0 -66.08741558082374,45.30560068108684,0 -66.08720997188779,45.30529032247759,0 -66.08723171649405,45.30475858110998,0 
+			</coordinates>
+		</LineString>
+	</Placemark>
 </Document>
 </kml>
