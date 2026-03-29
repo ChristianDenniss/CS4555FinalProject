@@ -38,6 +38,23 @@ For lots that have an SVG in **`FE/src/images/svgs/{LotName}.svg`** (e.g. `Timed
 
 ---
 
+## Realistic Campus Walking Paths (Google Earth)
+
+For every parking lot in the database (16 total), there are routes mapped to every building (12 total). Each route was manually drawn in Google Earth to accurately reflect how a real student would walk across the UNB Saint John campus.
+
+These paths were created carefully over many hours to ensure realistic traversal (sidewalks, paths, and natural walking flow), rather than straight-line or computed distances.
+
+You can view an image of the mapped routes here:  
+**`DTProj/docs/CampusPathMapping.png`**
+
+You can also explore the full interactive map:  
+**Google Earth:** https://earth.google.com/earth/d/1yszqkB2j1mN3LhwzE4qe0GqbB34wmLEi?usp=sharing
+
+The complete dataset of all routes and distances has been manually exported as a KML file located at:  
+**`DTProj/BE/data/DTParkingDistances.kml`**
+
+---
+
 ## Running the backend
 
 ```bash
